@@ -177,6 +177,10 @@ const (
 	SettingKeyImages2PricePerImage        = "images2_price_per_image"       // Images 2 单张价格（USD）
 	SettingKeyImages2RechargePath         = "images2_recharge_path"         // Images 2 充值跳转路径
 	SettingKeyImages2NoticeText           = "images2_notice_text"           // Images 2 页面提示文本
+	SettingKeyImages2PromoBannerEnabled    = "images2_promo_banner_enabled"  // Images 2 顶部广告横幅开关
+	SettingKeyImages2PromoBannerTitle      = "images2_promo_banner_title"    // Images 2 顶部广告标题
+	SettingKeyImages2PromoBannerText       = "images2_promo_banner_text"     // Images 2 顶部广告正文
+	SettingKeyImages2PromoBannerCTA        = "images2_promo_banner_cta"      // Images 2 顶部广告按钮文案
 
 	// 默认配置
 	SettingKeyDefaultConcurrency   = "default_concurrency"    // 新用户默认并发量

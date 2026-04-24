@@ -114,6 +114,10 @@ type SystemSettings struct {
 	Images2PricePerImage        float64          `json:"images2_price_per_image"`
 	Images2RechargePath         string           `json:"images2_recharge_path"`
 	Images2NoticeText           string           `json:"images2_notice_text"`
+	Images2PromoBannerEnabled   bool             `json:"images2_promo_banner_enabled"`
+	Images2PromoBannerTitle     string           `json:"images2_promo_banner_title"`
+	Images2PromoBannerText      string           `json:"images2_promo_banner_text"`
+	Images2PromoBannerCTA       string           `json:"images2_promo_banner_cta"`
 
 	DefaultConcurrency   int                          `json:"default_concurrency"`
 	DefaultBalance       float64                      `json:"default_balance"`
@@ -241,6 +245,10 @@ type PublicSettings struct {
 	Images2PricePerImage             float64          `json:"images2_price_per_image"`
 	Images2RechargePath              string           `json:"images2_recharge_path"`
 	Images2NoticeText                string           `json:"images2_notice_text"`
+	Images2PromoBannerEnabled        bool             `json:"images2_promo_banner_enabled"`
+	Images2PromoBannerTitle          string           `json:"images2_promo_banner_title"`
+	Images2PromoBannerText           string           `json:"images2_promo_banner_text"`
+	Images2PromoBannerCTA            string           `json:"images2_promo_banner_cta"`
 	LinuxDoOAuthEnabled              bool             `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool             `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool             `json:"wechat_oauth_open_enabled"`

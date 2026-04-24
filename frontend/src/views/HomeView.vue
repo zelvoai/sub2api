@@ -111,8 +111,11 @@
     </header>
 
     <!-- Main Content -->
-    <main class="relative z-10 flex-1 px-6 py-16">
+    <main class="relative z-10 flex-1 px-6 pb-16 pt-6">
       <div class="mx-auto max-w-6xl">
+        <div class="mb-8">
+          <Images2PromoBanner />
+        </div>
         <!-- Hero Section - Left/Right Layout -->
         <div class="mb-12 flex flex-col items-center justify-between gap-12 lg:flex-row lg:gap-16">
           <!-- Left: Text Content -->
@@ -409,6 +412,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore, useAppStore } from '@/stores'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
+import Images2PromoBanner from '@/components/common/Images2PromoBanner.vue'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()

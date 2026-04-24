@@ -159,3 +159,39 @@ func TestSettingHandler_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
 	require.Equal(t, "gpt-image-2", resp.Data.Images2ModelName)
 	require.Equal(t, 0.5, resp.Data.Images2PricePerImage)
 }
+
+func TestSettingHandler_GetPublicSettings_ExposesImages2PromoBannerSettings(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewSettingHandler(service.NewSettingService(&settingHandlerPublicRepoStub{
+		values: map[string]string{
+			service.SettingKeyImages2PromoBannerEnabled: "true",
+			service.SettingKeyImages2PromoBannerTitle:   "ChatGPT Images 2 一键生图上新",
+			service.SettingKeyImages2PromoBannerText:    "点击立即体验",
+			service.SettingKeyImages2PromoBannerCTA:     "马上体验",
+		},
+	}, &config.Config{}), "test-version")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
+
+	h.GetPublicSettings(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Images2PromoBannerEnabled bool   `json:"images2_promo_banner_enabled"`
+			Images2PromoBannerTitle   string `json:"images2_promo_banner_title"`
+			Images2PromoBannerText    string `json:"images2_promo_banner_text"`
+			Images2PromoBannerCTA     string `json:"images2_promo_banner_cta"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.True(t, resp.Data.Images2PromoBannerEnabled)
+	require.Equal(t, "ChatGPT Images 2 一键生图上新", resp.Data.Images2PromoBannerTitle)
+	require.Equal(t, "点击立即体验", resp.Data.Images2PromoBannerText)
+	require.Equal(t, "马上体验", resp.Data.Images2PromoBannerCTA)
+}

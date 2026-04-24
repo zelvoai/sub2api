@@ -355,6 +355,10 @@ export interface SystemSettings {
   images2_price_per_image: number;
   images2_recharge_path: string;
   images2_notice_text: string;
+  images2_promo_banner_enabled: boolean;
+  images2_promo_banner_title: string;
+  images2_promo_banner_text: string;
+  images2_promo_banner_cta: string;
   // SMTP settings
   smtp_host: string;
   smtp_port: number;
@@ -538,6 +542,10 @@ export interface UpdateSettingsRequest {
   images2_price_per_image?: number;
   images2_recharge_path?: string;
   images2_notice_text?: string;
+  images2_promo_banner_enabled?: boolean;
+  images2_promo_banner_title?: string;
+  images2_promo_banner_text?: string;
+  images2_promo_banner_cta?: string;
   hide_ccs_import_button?: boolean;
   table_default_page_size?: number;
   table_page_size_options?: number[];

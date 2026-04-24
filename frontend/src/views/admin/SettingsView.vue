@@ -3922,6 +3922,31 @@
               <label class="input-label">{{ t('admin.settings.features.images2.noticeText') }}</label>
               <textarea v-model="form.images2_notice_text" class="input min-h-[88px]" />
             </div>
+
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('admin.settings.features.images2.promoBannerEnabled') }}
+                </label>
+              </div>
+              <Toggle v-model="form.images2_promo_banner_enabled" />
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.promoBannerTitle') }}</label>
+                <input v-model="form.images2_promo_banner_title" type="text" class="input" />
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.promoBannerCta') }}</label>
+                <input v-model="form.images2_promo_banner_cta" type="text" class="input" />
+              </div>
+            </div>
+
+            <div>
+              <label class="input-label">{{ t('admin.settings.features.images2.promoBannerText') }}</label>
+              <textarea v-model="form.images2_promo_banner_text" class="input min-h-[88px]" />
+            </div>
           </div>
         </div>
 
@@ -5101,6 +5126,10 @@ const form = reactive<SettingsForm>({
   images2_price_per_image: 0.5,
   images2_recharge_path: '/purchase',
   images2_notice_text: '图片不会长期保存，请及时下载保存。',
+  images2_promo_banner_enabled: false,
+  images2_promo_banner_title: 'ChatGPT Images 2 一键生图上新',
+  images2_promo_banner_text: 'ChatGPT Images 2 一键生图上新，点击立即体验更丝滑的高质量生图。',
+  images2_promo_banner_cta: '点击体验',
   frontend_url: "",
   smtp_host: "",
   smtp_port: 587,
@@ -6001,6 +6030,10 @@ async function saveSettings() {
       images2_price_per_image: Number(form.images2_price_per_image) || 0.5,
       images2_recharge_path: form.images2_recharge_path,
       images2_notice_text: form.images2_notice_text,
+      images2_promo_banner_enabled: form.images2_promo_banner_enabled,
+      images2_promo_banner_title: form.images2_promo_banner_title,
+      images2_promo_banner_text: form.images2_promo_banner_text,
+      images2_promo_banner_cta: form.images2_promo_banner_cta,
       frontend_url: form.frontend_url,
       smtp_host: form.smtp_host,
       smtp_port: form.smtp_port,

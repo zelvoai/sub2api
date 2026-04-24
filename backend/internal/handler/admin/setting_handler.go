@@ -192,6 +192,10 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		Images2PricePerImage:                   settings.Images2PricePerImage,
 		Images2RechargePath:                    settings.Images2RechargePath,
 		Images2NoticeText:                      settings.Images2NoticeText,
+		Images2PromoBannerEnabled:              settings.Images2PromoBannerEnabled,
+		Images2PromoBannerTitle:                settings.Images2PromoBannerTitle,
+		Images2PromoBannerText:                 settings.Images2PromoBannerText,
+		Images2PromoBannerCTA:                  settings.Images2PromoBannerCTA,
 		DefaultConcurrency:                     settings.DefaultConcurrency,
 		DefaultBalance:                         settings.DefaultBalance,
 		DefaultUserRPMLimit:                    settings.DefaultUserRPMLimit,
@@ -352,6 +356,10 @@ type UpdateSettingsRequest struct {
 	Images2PricePerImage        *float64              `json:"images2_price_per_image"`
 	Images2RechargePath         *string               `json:"images2_recharge_path"`
 	Images2NoticeText           *string               `json:"images2_notice_text"`
+	Images2PromoBannerEnabled   *bool                 `json:"images2_promo_banner_enabled"`
+	Images2PromoBannerTitle     *string               `json:"images2_promo_banner_title"`
+	Images2PromoBannerText      *string               `json:"images2_promo_banner_text"`
+	Images2PromoBannerCTA       *string               `json:"images2_promo_banner_cta"`
 
 	// 默认配置
 	DefaultConcurrency                       int                               `json:"default_concurrency"`
@@ -1189,6 +1197,30 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.Images2NoticeText
 		}(),
+		Images2PromoBannerEnabled: func() bool {
+			if req.Images2PromoBannerEnabled != nil {
+				return *req.Images2PromoBannerEnabled
+			}
+			return previousSettings.Images2PromoBannerEnabled
+		}(),
+		Images2PromoBannerTitle: func() string {
+			if req.Images2PromoBannerTitle != nil {
+				return *req.Images2PromoBannerTitle
+			}
+			return previousSettings.Images2PromoBannerTitle
+		}(),
+		Images2PromoBannerText: func() string {
+			if req.Images2PromoBannerText != nil {
+				return *req.Images2PromoBannerText
+			}
+			return previousSettings.Images2PromoBannerText
+		}(),
+		Images2PromoBannerCTA: func() string {
+			if req.Images2PromoBannerCTA != nil {
+				return *req.Images2PromoBannerCTA
+			}
+			return previousSettings.Images2PromoBannerCTA
+		}(),
 		DefaultConcurrency:               req.DefaultConcurrency,
 		DefaultBalance:                   req.DefaultBalance,
 		DefaultUserRPMLimit:              req.DefaultUserRPMLimit,
@@ -1512,6 +1544,10 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		Images2PricePerImage:                   updatedSettings.Images2PricePerImage,
 		Images2RechargePath:                    updatedSettings.Images2RechargePath,
 		Images2NoticeText:                      updatedSettings.Images2NoticeText,
+		Images2PromoBannerEnabled:              updatedSettings.Images2PromoBannerEnabled,
+		Images2PromoBannerTitle:                updatedSettings.Images2PromoBannerTitle,
+		Images2PromoBannerText:                 updatedSettings.Images2PromoBannerText,
+		Images2PromoBannerCTA:                  updatedSettings.Images2PromoBannerCTA,
 		DefaultConcurrency:                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                         updatedSettings.DefaultBalance,
 		DefaultUserRPMLimit:                    updatedSettings.DefaultUserRPMLimit,
@@ -1911,6 +1947,18 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.Images2NoticeText != after.Images2NoticeText {
 		changed = append(changed, "images2_notice_text")
+	}
+	if before.Images2PromoBannerEnabled != after.Images2PromoBannerEnabled {
+		changed = append(changed, "images2_promo_banner_enabled")
+	}
+	if before.Images2PromoBannerTitle != after.Images2PromoBannerTitle {
+		changed = append(changed, "images2_promo_banner_title")
+	}
+	if before.Images2PromoBannerText != after.Images2PromoBannerText {
+		changed = append(changed, "images2_promo_banner_text")
+	}
+	if before.Images2PromoBannerCTA != after.Images2PromoBannerCTA {
+		changed = append(changed, "images2_promo_banner_cta")
 	}
 	if before.EnableFingerprintUnification != after.EnableFingerprintUnification {
 		changed = append(changed, "enable_fingerprint_unification")

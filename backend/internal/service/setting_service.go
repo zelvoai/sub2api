@@ -434,6 +434,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyImages2PricePerImage,
 		SettingKeyImages2RechargePath,
 		SettingKeyImages2NoticeText,
+		SettingKeyImages2PromoBannerEnabled,
+		SettingKeyImages2PromoBannerTitle,
+		SettingKeyImages2PromoBannerText,
+		SettingKeyImages2PromoBannerCTA,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
 		SettingKeyWeChatConnectAppID,
@@ -545,6 +549,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		Images2PricePerImage:             images2PricePerImage,
 		Images2RechargePath:              firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2RechargePath]), "/purchase"),
 		Images2NoticeText:                strings.TrimSpace(settings[SettingKeyImages2NoticeText]),
+		Images2PromoBannerEnabled:        settings[SettingKeyImages2PromoBannerEnabled] == "true",
+		Images2PromoBannerTitle:          firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PromoBannerTitle]), "ChatGPT Images 2 一键生图上新"),
+		Images2PromoBannerText:           firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PromoBannerText]), "ChatGPT Images 2 一键生图上新，点击立即体验更丝滑的高质量生图。"),
+		Images2PromoBannerCTA:            firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PromoBannerCTA]), "点击体验"),
 		LinuxDoOAuthEnabled:              linuxDoEnabled,
 		WeChatOAuthEnabled:               weChatEnabled,
 		WeChatOAuthOpenEnabled:           weChatOpenEnabled,
@@ -1213,6 +1221,10 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyImages2PricePerImage] = strconv.FormatFloat(settings.Images2PricePerImage, 'f', -1, 64)
 	updates[SettingKeyImages2RechargePath] = strings.TrimSpace(settings.Images2RechargePath)
 	updates[SettingKeyImages2NoticeText] = strings.TrimSpace(settings.Images2NoticeText)
+	updates[SettingKeyImages2PromoBannerEnabled] = strconv.FormatBool(settings.Images2PromoBannerEnabled)
+	updates[SettingKeyImages2PromoBannerTitle] = strings.TrimSpace(settings.Images2PromoBannerTitle)
+	updates[SettingKeyImages2PromoBannerText] = strings.TrimSpace(settings.Images2PromoBannerText)
+	updates[SettingKeyImages2PromoBannerCTA] = strings.TrimSpace(settings.Images2PromoBannerCTA)
 
 	// 默认配置
 	updates[SettingKeyDefaultConcurrency] = strconv.Itoa(settings.DefaultConcurrency)
@@ -1738,6 +1750,10 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyImages2PricePerImage:                     "0.5",
 		SettingKeyImages2RechargePath:                      "/purchase",
 		SettingKeyImages2NoticeText:                        "图片不会长期保存，请及时下载保存。",
+		SettingKeyImages2PromoBannerEnabled:                "false",
+		SettingKeyImages2PromoBannerTitle:                  "ChatGPT Images 2 一键生图上新",
+		SettingKeyImages2PromoBannerText:                   "ChatGPT Images 2 一键生图上新，点击立即体验更丝滑的高质量生图。",
+		SettingKeyImages2PromoBannerCTA:                    "点击体验",
 		SettingKeyWeChatConnectEnabled:                     "false",
 		SettingKeyWeChatConnectAppID:                       "",
 		SettingKeyWeChatConnectAppSecret:                   "",
@@ -1883,6 +1899,10 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		Images2ModelName:                 firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2ModelName]), "gpt-image-2"),
 		Images2RechargePath:              firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2RechargePath]), "/purchase"),
 		Images2NoticeText:                strings.TrimSpace(settings[SettingKeyImages2NoticeText]),
+		Images2PromoBannerEnabled:        settings[SettingKeyImages2PromoBannerEnabled] == "true",
+		Images2PromoBannerTitle:          firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PromoBannerTitle]), "ChatGPT Images 2 一键生图上新"),
+		Images2PromoBannerText:           firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PromoBannerText]), "ChatGPT Images 2 一键生图上新，点击立即体验更丝滑的高质量生图。"),
+		Images2PromoBannerCTA:            firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PromoBannerCTA]), "点击体验"),
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
 	}
 	if v, err := strconv.ParseFloat(strings.TrimSpace(settings[SettingKeyImages2PricePerImage]), 64); err == nil && v >= 0 {

@@ -190,3 +190,22 @@ func TestSettingService_GetPublicSettings_AllowsEmptyImages2BadgeText(t *testing
 	require.NoError(t, err)
 	require.Equal(t, "", settings.Images2BadgeText)
 }
+
+func TestSettingService_GetPublicSettings_ExposesImages2PromoBannerSettings(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyImages2PromoBannerEnabled: "true",
+			SettingKeyImages2PromoBannerTitle:   "ChatGPT Images 2 一键生图上新",
+			SettingKeyImages2PromoBannerText:    "点击立即体验",
+			SettingKeyImages2PromoBannerCTA:     "马上体验",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.Images2PromoBannerEnabled)
+	require.Equal(t, "ChatGPT Images 2 一键生图上新", settings.Images2PromoBannerTitle)
+	require.Equal(t, "点击立即体验", settings.Images2PromoBannerText)
+	require.Equal(t, "马上体验", settings.Images2PromoBannerCTA)
+}

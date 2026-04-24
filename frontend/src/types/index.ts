@@ -183,6 +183,10 @@ export interface PublicSettings {
   images2_price_per_image: number
   images2_recharge_path: string
   images2_notice_text: string
+  images2_promo_banner_enabled: boolean
+  images2_promo_banner_title: string
+  images2_promo_banner_text: string
+  images2_promo_banner_cta: string
   linuxdo_oauth_enabled: boolean
   wechat_oauth_enabled: boolean
   wechat_oauth_open_enabled?: boolean
