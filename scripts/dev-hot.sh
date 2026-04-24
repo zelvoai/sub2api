@@ -8,6 +8,9 @@ DEPLOY_DIR="${REPO_ROOT}/deploy"
 ENV_FILE="${DEPLOY_DIR}/.env"
 ENV_EXAMPLE="${DEPLOY_DIR}/.env.example"
 COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.dev.yml"
+RUNTIME_DIR="${REPO_ROOT}/.dev-run"
+BACKEND_PID_FILE="${RUNTIME_DIR}/backend.pid"
+FRONTEND_PID_FILE="${RUNTIME_DIR}/frontend.pid"
 TMP_OVERRIDE_FILE=""
 TMP_AIR_TOML=""
 
@@ -91,6 +94,131 @@ cleanup() {
   fi
 }
 
+ensure_runtime_dir() {
+  mkdir -p "${RUNTIME_DIR}"
+}
+
+read_pid_file() {
+  local file="$1"
+  [[ -f "${file}" ]] || return 1
+  tr -d ' 
+
+	' < "${file}"
+}
+
+clear_pid_file() {
+  local file="$1"
+  [[ -f "${file}" ]] && rm -f "${file}"
+}
+
+write_pid_file() {
+  local file="$1"
+  local pid="$2"
+  ensure_runtime_dir
+  printf '%s
+' "${pid}" > "${file}"
+}
+
+collect_descendants() {
+  local pid="$1"
+  local child
+  for child in $(pgrep -P "${pid}" 2>/dev/null || true); do
+    collect_descendants "${child}"
+    printf '%s
+' "${child}"
+  done
+}
+
+collect_air_ancestors() {
+  local pid="$1"
+  local ppid=""
+  local cmdline=""
+
+  while true; do
+    ppid="$(ps -o ppid= -p "${pid}" 2>/dev/null | tr -d ' ' || true)"
+    [[ -n "${ppid}" && "${ppid}" != "0" ]] || break
+    cmdline="$(ps -o args= -p "${ppid}" 2>/dev/null || true)"
+    if [[ "${cmdline}" == air\ -* ]]; then
+      printf '%s
+' "${ppid}"
+    fi
+    pid="${ppid}"
+  done
+}
+
+stop_process_tree() {
+  local pid="${1:-}"
+  [[ -n "${pid}" ]] || return 0
+  if ! kill -0 "${pid}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local descendants=""
+  local ancestors=""
+  descendants="$(collect_descendants "${pid}")"
+  ancestors="$(collect_air_ancestors "${pid}")"
+
+  if [[ -n "${ancestors}" ]]; then
+    while IFS= read -r ancestor; do
+      [[ -n "${ancestor}" ]] || continue
+      kill "${ancestor}" >/dev/null 2>&1 || true
+    done <<< "${ancestors}"
+  fi
+
+  if [[ -n "${descendants}" ]]; then
+    while IFS= read -r child; do
+      [[ -n "${child}" ]] || continue
+      kill "${child}" >/dev/null 2>&1 || true
+    done <<< "${descendants}"
+  fi
+
+  kill "${pid}" >/dev/null 2>&1 || true
+  sleep 1
+
+  if [[ -n "${descendants}" ]]; then
+    while IFS= read -r child; do
+      [[ -n "${child}" ]] || continue
+      kill -0 "${child}" >/dev/null 2>&1 && kill -9 "${child}" >/dev/null 2>&1 || true
+    done <<< "${descendants}"
+  fi
+
+  if [[ -n "${ancestors}" ]]; then
+    while IFS= read -r ancestor; do
+      [[ -n "${ancestor}" ]] || continue
+      kill -0 "${ancestor}" >/dev/null 2>&1 && kill -9 "${ancestor}" >/dev/null 2>&1 || true
+    done <<< "${ancestors}"
+  fi
+
+  kill -0 "${pid}" >/dev/null 2>&1 && kill -9 "${pid}" >/dev/null 2>&1 || true
+  wait "${pid}" 2>/dev/null || true
+}
+
+stop_recorded_process() {
+  local file="$1"
+  local label="$2"
+  local pid=""
+  pid="$(read_pid_file "${file}" 2>/dev/null || true)"
+  if [[ -n "${pid}" ]]; then
+    stop_process_tree "${pid}"
+    clear_pid_file "${file}"
+    echo "[dev-hot] ${label}: 已停止 PID ${pid}"
+  fi
+}
+
+kill_matching_processes() {
+  local pattern="$1"
+  local label="$2"
+  local pids=""
+  pids="$(pgrep -f "${pattern}" 2>/dev/null || true)"
+  [[ -n "${pids}" ]] || return 0
+
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    stop_process_tree "${pid}"
+    echo "[dev-hot] ${label}: 已清理遗留进程 PID ${pid}"
+  done <<< "${pids}"
+}
+
 build_compose_args() {
   local -n out_ref=$1
   local db_port="${HOT_DATABASE_PORT:-5432}"
@@ -127,6 +255,12 @@ start_infra() {
 stop_infra() {
   local compose_args=()
   build_compose_args compose_args
+  stop_recorded_process "${FRONTEND_PID_FILE}" "frontend"
+  stop_recorded_process "${BACKEND_PID_FILE}" "backend"
+  kill_matching_processes "${REPO_ROOT}/frontend/node_modules/.*/vite" "frontend"
+  kill_matching_processes "${REPO_ROOT}/backend/tmp/sub2api-dev" "backend"
+  kill_matching_processes "go run ./cmd/server" "backend"
+  kill_matching_processes "air -c /tmp/" "backend"
   docker compose "${compose_args[@]}" down
 }
 
@@ -200,7 +334,9 @@ EOF
 }
 
 run_frontend() {
-  local server_port="${HOT_SERVER_PORT:-8080}"
+  load_env_file
+
+  local server_port="${HOT_SERVER_PORT:-${SERVER_PORT:-8080}}"
   local frontend_port="${HOT_FRONTEND_PORT:-3000}"
 
   ensure_frontend_deps
@@ -261,8 +397,16 @@ main() {
   case "${action}" in
     all) run_all ;;
     infra) start_infra ;;
-    backend) run_backend ;;
-    frontend) run_frontend ;;
+    backend)
+      trap 'clear_pid_file "${BACKEND_PID_FILE}"; cleanup' EXIT INT TERM
+      write_pid_file "${BACKEND_PID_FILE}" "$$"
+      run_backend
+      ;;
+    frontend)
+      trap 'clear_pid_file "${FRONTEND_PID_FILE}"; cleanup' EXIT INT TERM
+      write_pid_file "${FRONTEND_PID_FILE}" "$$"
+      run_frontend
+      ;;
     down) stop_infra ;;
     logs) logs_infra ;;
   esac
