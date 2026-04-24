@@ -12,12 +12,15 @@ COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.dev.yml"
 usage() {
   cat <<'EOF'
 用法:
-  ./scripts/dev-up.sh [up|down|restart|logs|ps]
+  ./scripts/dev-up.sh [up|build|rebuild|down|restart|logs|ps]
 
 说明:
   - 自动初始化 deploy/.env（如果不存在）
   - 自动创建 deploy/data、deploy/postgres_data、deploy/redis_data
   - 使用 deploy/docker-compose.dev.yml 启动本地开发环境
+  - up: 默认不强制重建镜像，适合日常反复启动
+  - build: 强制重新构建并启动
+  - rebuild: 等同于 down 后再 build
 EOF
 }
 
@@ -78,7 +81,7 @@ main() {
   local action="${1:-up}"
 
   case "${action}" in
-    up|down|restart|logs|ps) ;;
+    up|build|rebuild|down|restart|logs|ps) ;;
     -h|--help|help)
       usage
       exit 0
@@ -100,18 +103,25 @@ main() {
 
   case "${action}" in
     up)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build -d
+      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d
       echo
       echo "本地开发环境已启动:"
       echo "  Web: http://localhost:$(awk -F= '/^SERVER_PORT=/{print $2}' "${ENV_FILE}" | tail -n1)"
       echo "  日志: ./scripts/dev-up.sh logs"
+      ;;
+    build)
+      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build -d
+      ;;
+    rebuild)
+      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
+      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build -d
       ;;
     down)
       docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
       ;;
     restart)
       docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build -d
+      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d
       ;;
     logs)
       docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" logs -f sub2api
