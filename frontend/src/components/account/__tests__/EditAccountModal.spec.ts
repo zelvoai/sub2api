@@ -63,6 +63,10 @@ const ModelWhitelistSelectorStub = defineComponent({
     modelValue: {
       type: Array,
       default: () => []
+    },
+    fetchRequest: {
+      type: Object,
+      default: null
     }
   },
   emits: ['update:modelValue'],
@@ -78,6 +82,7 @@ const ModelWhitelistSelectorStub = defineComponent({
       <span data-testid="model-whitelist-value">
         {{ Array.isArray(modelValue) ? modelValue.join(',') : '' }}
       </span>
+      <span data-testid="model-whitelist-fetch">{{ fetchRequest ? JSON.stringify(fetchRequest) : '' }}</span>
     </div>
   `
 })
@@ -140,6 +145,8 @@ describe('EditAccountModal', () => {
     const wrapper = mountModal(account)
 
     expect(wrapper.get('[data-testid="model-whitelist-value"]').text()).toBe('gpt-5.2')
+    expect(wrapper.get('[data-testid="model-whitelist-fetch"]').text()).toContain('https://api.openai.com')
+    expect(wrapper.get('[data-testid="model-whitelist-fetch"]').text()).toContain('sk-test')
 
     await wrapper.get('[data-testid="rewrite-to-snapshot"]').trigger('click')
     expect(wrapper.get('[data-testid="model-whitelist-value"]').text()).toBe('gpt-5.2-2025-12-11')

@@ -441,6 +441,24 @@ export async function getAvailableModels(id: number): Promise<ClaudeModel[]> {
   return data
 }
 
+export interface PreviewAccountModelsRequest {
+  platform: string
+  type?: string
+  credentials?: Record<string, unknown>
+}
+
+export interface PreviewAccountModel {
+  id: string
+  display_name: string
+  provider: string
+  source: 'remote' | 'static'
+}
+
+export async function previewAvailableModels(payload: PreviewAccountModelsRequest): Promise<PreviewAccountModel[]> {
+  const { data } = await apiClient.post<PreviewAccountModel[]>('/admin/accounts/models/preview', payload)
+  return data
+}
+
 export interface CRSPreviewAccount {
   crs_account_id: string
   kind: string

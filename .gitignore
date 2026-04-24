@@ -37,6 +37,7 @@ frontend/dist/
 *.tsbuildinfo
 vite.config.d.ts
 vite.config.js.timestamp-*
+vite.config.ts.timestamp-*.mjs
 
 # 日志
 npm-debug.log*
@@ -136,3 +137,4 @@ aicodex
 output/
 .omx/
 .dev-data/
+.dev-run/

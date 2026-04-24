@@ -238,6 +238,49 @@ const allModelsList: string[] = [
 // 转换为下拉选项格式
 export const allModels = allModelsList.map(m => ({ value: m, label: m }))
 
+export type ModelCatalogSource = 'local' | 'remote' | 'static' | 'selected'
+
+export interface ModelCatalogItem {
+  value: string
+  label: string
+  provider: string
+  source?: ModelCatalogSource
+}
+
+export function inferModelProvider(model: string, platformHint?: string): string {
+  const lowered = model.trim().toLowerCase()
+  if (lowered.startsWith('gpt') || lowered.startsWith('o1') || lowered.startsWith('o3') || lowered.startsWith('o4') || lowered.startsWith('chatgpt')) {
+    return 'OpenAI'
+  }
+  if (lowered.startsWith('claude')) {
+    return 'Anthropic'
+  }
+  if (lowered.startsWith('gemini')) {
+    return 'Gemini'
+  }
+  if (platformHint === 'openai') return 'OpenAI'
+  if (platformHint === 'anthropic' || platformHint === 'claude') return 'Anthropic'
+  if (platformHint === 'gemini') return 'Gemini'
+  if (platformHint === 'antigravity') return 'Antigravity'
+  return 'Other'
+}
+
+export function createModelCatalogItem(
+  model: string,
+  options: { label?: string; platformHint?: string; source?: ModelCatalogSource; provider?: string } = {}
+): ModelCatalogItem {
+  return {
+    value: model,
+    label: options.label || model,
+    provider: options.provider || inferModelProvider(model, options.platformHint),
+    source: options.source
+  }
+}
+
+export function getModelCatalogByPlatform(platform: string, source: ModelCatalogSource = 'local'): ModelCatalogItem[] {
+  return getModelsByPlatform(platform).map(model => createModelCatalogItem(model, { platformHint: platform, source }))
+}
+
 // =====================
 // 预设映射
 // =====================

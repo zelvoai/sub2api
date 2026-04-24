@@ -742,6 +742,18 @@
             </p>
           </div>
 
+          <div class="mb-3">
+            <ModelWhitelistSelector
+              v-model="antigravityExactModels"
+              platform="antigravity"
+              :fetch-request="antigravityFetchRequest"
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.selectedModels', { count: antigravityExactModels.length }) }}
+              <span v-if="antigravityExactModels.length === 0">{{ t('admin.accounts.supportsAllModels') }}</span>
+            </p>
+          </div>
+
           <div v-if="antigravityModelMappings.length > 0" class="mb-3 space-y-2">
             <div
               v-for="(mapping, index) in antigravityModelMappings"
@@ -963,7 +975,7 @@
 
             <!-- Whitelist Mode -->
             <div v-if="modelRestrictionMode === 'whitelist'">
-              <ModelWhitelistSelector v-model="allowedModels" :platform="form.platform" />
+              <ModelWhitelistSelector v-model="allowedModels" :platform="form.platform" :fetch-request="whitelistFetchRequest" />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
                 <span v-if="allowedModels.length === 0">{{
@@ -1389,7 +1401,7 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector v-model="allowedModels" platform="anthropic" />
+            <ModelWhitelistSelector v-model="allowedModels" platform="anthropic" :fetch-request="whitelistFetchRequest" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0">{{ t('admin.accounts.supportsAllModels') }}</span>
@@ -1628,7 +1640,7 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector v-model="allowedModels" :platform="form.platform" />
+            <ModelWhitelistSelector v-model="allowedModels" :platform="form.platform" :fetch-request="whitelistFetchRequest" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0">{{
@@ -3207,6 +3219,54 @@ const openAIWSModeConcurrencyHintKey = computed(() =>
 const isOpenAIModelRestrictionDisabled = computed(() =>
   form.platform === 'openai' && openaiPassthroughEnabled.value
 )
+
+const whitelistFetchRequest = computed(() => {
+  if (form.type !== 'apikey') {
+    return null
+  }
+  if (!['openai', 'anthropic', 'gemini', 'antigravity'].includes(form.platform)) {
+    return null
+  }
+  return {
+    platform: form.platform,
+    type: form.type,
+    credentials: {
+      base_url: apiKeyBaseUrl.value.trim(),
+      api_key: apiKeyValue.value.trim(),
+      ...(form.platform === 'gemini' ? { tier_id: geminiTierAIStudio.value } : {})
+    }
+  }
+})
+
+const antigravityFetchRequest = computed(() => {
+  if (form.platform !== 'antigravity') {
+    return null
+  }
+  return {
+    platform: 'antigravity',
+    type: form.type
+  }
+})
+
+const antigravityExactModels = computed<string[]>({
+  get: () => antigravityModelMappings.value
+    .filter(mapping => {
+      const from = mapping.from.trim()
+      const to = mapping.to.trim()
+      return from !== '' && from === to && !from.includes('*')
+    })
+    .map(mapping => mapping.from.trim()),
+  set: (models) => {
+    const preservedMappings = antigravityModelMappings.value.filter(mapping => {
+      const from = mapping.from.trim()
+      const to = mapping.to.trim()
+      return from === '' || from !== to || from.includes('*')
+    })
+    const identityMappings = Array.from(new Set(models.map(model => model.trim()).filter(Boolean)))
+      .map(model => ({ from: model, to: model }))
+    antigravityModelMappings.value = [...preservedMappings, ...identityMappings]
+  }
+})
 
 const mixedChannelWarningMessageText = computed(() => {
   if (mixedChannelWarningDetails.value) {
