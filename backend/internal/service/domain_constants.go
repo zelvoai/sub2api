@@ -168,6 +168,15 @@ const (
 	SettingKeyTablePageSizeOptions        = "table_page_size_options"       // 表格可选每页条数（JSON 数组）
 	SettingKeyCustomMenuItems             = "custom_menu_items"             // 自定义菜单项（JSON 数组）
 	SettingKeyCustomEndpoints             = "custom_endpoints"              // 自定义端点列表（JSON 数组）
+	SettingKeyImages2Enabled              = "images2_enabled"               // Images 2 页面功能开关
+	SettingKeyImages2PageTitle            = "images2_page_title"            // Images 2 页面标题
+	SettingKeyImages2PageSubtitle         = "images2_page_subtitle"         // Images 2 页面副标题
+	SettingKeyImages2BadgeText            = "images2_badge_text"            // Images 2 页面角标文本
+	SettingKeyImages2TargetGroupName      = "images2_target_group_name"     // Images 2 目标分组名
+	SettingKeyImages2ModelName            = "images2_model_name"            // Images 2 目标模型名
+	SettingKeyImages2PricePerImage        = "images2_price_per_image"       // Images 2 单张价格（USD）
+	SettingKeyImages2RechargePath         = "images2_recharge_path"         // Images 2 充值跳转路径
+	SettingKeyImages2NoticeText           = "images2_notice_text"           // Images 2 页面提示文本
 
 	// 默认配置
 	SettingKeyDefaultConcurrency   = "default_concurrency"    // 新用户默认并发量

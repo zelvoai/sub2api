@@ -3729,6 +3729,11 @@
                     >
                       {{ t("admin.settings.customMenu.iconSvg") }}
                     </label>
+                    <textarea
+                      v-model="item.icon_svg"
+                      class="input mb-3 min-h-[96px] font-mono text-xs"
+                      placeholder="<svg viewBox='0 0 24 24' fill='none' stroke='currentColor'>...</svg>"
+                    />
                     <ImageUpload
                       :model-value="item.icon_svg"
                       mode="svg"
@@ -3849,6 +3854,73 @@
                 </p>
               </div>
               <Toggle v-model="form.available_channels_enabled" />
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ t('admin.settings.features.images2.title') }}
+            </h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ t('admin.settings.features.images2.description') }}
+            </p>
+          </div>
+          <div class="space-y-5 p-6">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {{ t('admin.settings.features.images2.enabled') }}
+                </label>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {{ t('admin.settings.features.images2.enabledHint') }}
+                </p>
+              </div>
+              <Toggle v-model="form.images2_enabled" />
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.pageTitle') }}</label>
+                <input v-model="form.images2_page_title" type="text" class="input" />
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.badgeText') }}</label>
+                <input v-model="form.images2_badge_text" type="text" class="input" />
+              </div>
+            </div>
+
+            <div>
+              <label class="input-label">{{ t('admin.settings.features.images2.pageSubtitle') }}</label>
+              <textarea v-model="form.images2_page_subtitle" class="input min-h-[88px]" />
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.groupName') }}</label>
+                <input v-model="form.images2_target_group_name" type="text" class="input" />
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.modelName') }}</label>
+                <input v-model="form.images2_model_name" type="text" class="input" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.pricePerImage') }}</label>
+                <input v-model.number="form.images2_price_per_image" type="number" step="0.01" min="0" class="input" />
+              </div>
+              <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.rechargePath') }}</label>
+                <input v-model="form.images2_recharge_path" type="text" class="input" />
+              </div>
+            </div>
+
+            <div>
+              <label class="input-label">{{ t('admin.settings.features.images2.noticeText') }}</label>
+              <textarea v-model="form.images2_notice_text" class="input min-h-[88px]" />
             </div>
           </div>
         </div>
@@ -5020,6 +5092,15 @@ const form = reactive<SettingsForm>({
     endpoint: string;
     description: string;
   }>,
+  images2_enabled: false,
+  images2_page_title: 'ChatGPT Images 2 生图',
+  images2_page_subtitle: '输入提示词，快速生成高质量图像。',
+  images2_badge_text: 'HOT',
+  images2_target_group_name: 'openai-chatgpt-images-2',
+  images2_model_name: 'gpt-image-2',
+  images2_price_per_image: 0.5,
+  images2_recharge_path: '/purchase',
+  images2_notice_text: '图片不会长期保存，请及时下载保存。',
   frontend_url: "",
   smtp_host: "",
   smtp_port: 587,
@@ -5911,6 +5992,15 @@ async function saveSettings() {
       table_page_size_options: form.table_page_size_options,
       custom_menu_items: form.custom_menu_items,
       custom_endpoints: form.custom_endpoints,
+      images2_enabled: form.images2_enabled,
+      images2_page_title: form.images2_page_title,
+      images2_page_subtitle: form.images2_page_subtitle,
+      images2_badge_text: form.images2_badge_text,
+      images2_target_group_name: form.images2_target_group_name,
+      images2_model_name: form.images2_model_name,
+      images2_price_per_image: Number(form.images2_price_per_image) || 0.5,
+      images2_recharge_path: form.images2_recharge_path,
+      images2_notice_text: form.images2_notice_text,
       frontend_url: form.frontend_url,
       smtp_host: form.smtp_host,
       smtp_port: form.smtp_port,

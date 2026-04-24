@@ -151,3 +151,42 @@ func TestSettingService_GetPublicSettings_FallsBackToConfigForWeChatOAuthCapabil
 	require.False(t, settings.WeChatOAuthMPEnabled)
 	require.False(t, settings.WeChatOAuthMobileEnabled)
 }
+
+func TestSettingService_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyImages2Enabled:         "true",
+			SettingKeyImages2PageTitle:       "ChatGPT Images 2 生图",
+			SettingKeyImages2BadgeText:       "HOT",
+			SettingKeyImages2TargetGroupName: "openai-chatgpt-images-2",
+			SettingKeyImages2ModelName:       "gpt-image-2",
+			SettingKeyImages2PricePerImage:   "0.5",
+			SettingKeyImages2RechargePath:    "/purchase",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.True(t, settings.Images2Enabled)
+	require.Equal(t, "ChatGPT Images 2 生图", settings.Images2PageTitle)
+	require.Equal(t, "HOT", settings.Images2BadgeText)
+	require.Equal(t, "openai-chatgpt-images-2", settings.Images2TargetGroupName)
+	require.Equal(t, "gpt-image-2", settings.Images2ModelName)
+	require.Equal(t, 0.5, settings.Images2PricePerImage)
+	require.Equal(t, "/purchase", settings.Images2RechargePath)
+}
+
+func TestSettingService_GetPublicSettings_AllowsEmptyImages2BadgeText(t *testing.T) {
+	repo := &settingPublicRepoStub{
+		values: map[string]string{
+			SettingKeyImages2Enabled:   "true",
+			SettingKeyImages2BadgeText: "",
+		},
+	}
+	svc := NewSettingService(repo, &config.Config{})
+
+	settings, err := svc.GetPublicSettings(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "", settings.Images2BadgeText)
+}

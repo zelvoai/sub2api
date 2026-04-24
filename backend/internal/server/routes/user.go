@@ -116,5 +116,10 @@ func RegisterUserRoutes(
 			monitors.GET("", h.ChannelMonitor.List)
 			monitors.GET("/:id/status", h.ChannelMonitor.GetStatus)
 		}
+
+		images2 := authenticated.Group("/images2")
+		{
+			images2.POST("/generate", h.Images2.Generate)
+		}
 	}
 }

@@ -316,6 +316,17 @@ const routes: RouteRecordRaw[] = [
       titleKey: 'customPage.title',
     }
   },
+  {
+    path: '/chatgpt-images-2',
+    name: 'ChatGPTImages2',
+    component: () => import('@/views/user/Images2View.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'ChatGPT Images 2',
+      titleKey: 'images2.pageTitle'
+    }
+  },
 
   // ==================== Admin Routes ====================
   {

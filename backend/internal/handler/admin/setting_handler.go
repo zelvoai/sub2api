@@ -183,6 +183,15 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		TablePageSizeOptions:                   settings.TablePageSizeOptions,
 		CustomMenuItems:                        dto.ParseCustomMenuItems(settings.CustomMenuItems),
 		CustomEndpoints:                        dto.ParseCustomEndpoints(settings.CustomEndpoints),
+		Images2Enabled:                         settings.Images2Enabled,
+		Images2PageTitle:                       settings.Images2PageTitle,
+		Images2PageSubtitle:                    settings.Images2PageSubtitle,
+		Images2BadgeText:                       settings.Images2BadgeText,
+		Images2TargetGroupName:                 settings.Images2TargetGroupName,
+		Images2ModelName:                       settings.Images2ModelName,
+		Images2PricePerImage:                   settings.Images2PricePerImage,
+		Images2RechargePath:                    settings.Images2RechargePath,
+		Images2NoticeText:                      settings.Images2NoticeText,
 		DefaultConcurrency:                     settings.DefaultConcurrency,
 		DefaultBalance:                         settings.DefaultBalance,
 		DefaultUserRPMLimit:                    settings.DefaultUserRPMLimit,
@@ -334,6 +343,15 @@ type UpdateSettingsRequest struct {
 	TablePageSizeOptions        []int                 `json:"table_page_size_options"`
 	CustomMenuItems             *[]dto.CustomMenuItem `json:"custom_menu_items"`
 	CustomEndpoints             *[]dto.CustomEndpoint `json:"custom_endpoints"`
+	Images2Enabled              *bool                 `json:"images2_enabled"`
+	Images2PageTitle            *string               `json:"images2_page_title"`
+	Images2PageSubtitle         *string               `json:"images2_page_subtitle"`
+	Images2BadgeText            *string               `json:"images2_badge_text"`
+	Images2TargetGroupName      *string               `json:"images2_target_group_name"`
+	Images2ModelName            *string               `json:"images2_model_name"`
+	Images2PricePerImage        *float64              `json:"images2_price_per_image"`
+	Images2RechargePath         *string               `json:"images2_recharge_path"`
+	Images2NoticeText           *string               `json:"images2_notice_text"`
 
 	// 默认配置
 	DefaultConcurrency                       int                               `json:"default_concurrency"`
@@ -1117,6 +1135,60 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TablePageSizeOptions:             req.TablePageSizeOptions,
 		CustomMenuItems:                  customMenuJSON,
 		CustomEndpoints:                  customEndpointsJSON,
+		Images2Enabled: func() bool {
+			if req.Images2Enabled != nil {
+				return *req.Images2Enabled
+			}
+			return previousSettings.Images2Enabled
+		}(),
+		Images2PageTitle: func() string {
+			if req.Images2PageTitle != nil {
+				return *req.Images2PageTitle
+			}
+			return previousSettings.Images2PageTitle
+		}(),
+		Images2PageSubtitle: func() string {
+			if req.Images2PageSubtitle != nil {
+				return *req.Images2PageSubtitle
+			}
+			return previousSettings.Images2PageSubtitle
+		}(),
+		Images2BadgeText: func() string {
+			if req.Images2BadgeText != nil {
+				return *req.Images2BadgeText
+			}
+			return previousSettings.Images2BadgeText
+		}(),
+		Images2TargetGroupName: func() string {
+			if req.Images2TargetGroupName != nil {
+				return *req.Images2TargetGroupName
+			}
+			return previousSettings.Images2TargetGroupName
+		}(),
+		Images2ModelName: func() string {
+			if req.Images2ModelName != nil {
+				return *req.Images2ModelName
+			}
+			return previousSettings.Images2ModelName
+		}(),
+		Images2PricePerImage: func() float64 {
+			if req.Images2PricePerImage != nil {
+				return *req.Images2PricePerImage
+			}
+			return previousSettings.Images2PricePerImage
+		}(),
+		Images2RechargePath: func() string {
+			if req.Images2RechargePath != nil {
+				return *req.Images2RechargePath
+			}
+			return previousSettings.Images2RechargePath
+		}(),
+		Images2NoticeText: func() string {
+			if req.Images2NoticeText != nil {
+				return *req.Images2NoticeText
+			}
+			return previousSettings.Images2NoticeText
+		}(),
 		DefaultConcurrency:               req.DefaultConcurrency,
 		DefaultBalance:                   req.DefaultBalance,
 		DefaultUserRPMLimit:              req.DefaultUserRPMLimit,
@@ -1431,6 +1503,15 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		TablePageSizeOptions:                   updatedSettings.TablePageSizeOptions,
 		CustomMenuItems:                        dto.ParseCustomMenuItems(updatedSettings.CustomMenuItems),
 		CustomEndpoints:                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
+		Images2Enabled:                         updatedSettings.Images2Enabled,
+		Images2PageTitle:                       updatedSettings.Images2PageTitle,
+		Images2PageSubtitle:                    updatedSettings.Images2PageSubtitle,
+		Images2BadgeText:                       updatedSettings.Images2BadgeText,
+		Images2TargetGroupName:                 updatedSettings.Images2TargetGroupName,
+		Images2ModelName:                       updatedSettings.Images2ModelName,
+		Images2PricePerImage:                   updatedSettings.Images2PricePerImage,
+		Images2RechargePath:                    updatedSettings.Images2RechargePath,
+		Images2NoticeText:                      updatedSettings.Images2NoticeText,
 		DefaultConcurrency:                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                         updatedSettings.DefaultBalance,
 		DefaultUserRPMLimit:                    updatedSettings.DefaultUserRPMLimit,
@@ -1803,6 +1884,33 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.CustomEndpoints != after.CustomEndpoints {
 		changed = append(changed, "custom_endpoints")
+	}
+	if before.Images2Enabled != after.Images2Enabled {
+		changed = append(changed, "images2_enabled")
+	}
+	if before.Images2PageTitle != after.Images2PageTitle {
+		changed = append(changed, "images2_page_title")
+	}
+	if before.Images2PageSubtitle != after.Images2PageSubtitle {
+		changed = append(changed, "images2_page_subtitle")
+	}
+	if before.Images2BadgeText != after.Images2BadgeText {
+		changed = append(changed, "images2_badge_text")
+	}
+	if before.Images2TargetGroupName != after.Images2TargetGroupName {
+		changed = append(changed, "images2_target_group_name")
+	}
+	if before.Images2ModelName != after.Images2ModelName {
+		changed = append(changed, "images2_model_name")
+	}
+	if before.Images2PricePerImage != after.Images2PricePerImage {
+		changed = append(changed, "images2_price_per_image")
+	}
+	if before.Images2RechargePath != after.Images2RechargePath {
+		changed = append(changed, "images2_recharge_path")
+	}
+	if before.Images2NoticeText != after.Images2NoticeText {
+		changed = append(changed, "images2_notice_text")
 	}
 	if before.EnableFingerprintUnification != after.EnableFingerprintUnification {
 		changed = append(changed, "enable_fingerprint_unification")

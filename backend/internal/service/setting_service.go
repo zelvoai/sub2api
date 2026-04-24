@@ -425,6 +425,15 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		SettingKeyTablePageSizeOptions,
 		SettingKeyCustomMenuItems,
 		SettingKeyCustomEndpoints,
+		SettingKeyImages2Enabled,
+		SettingKeyImages2PageTitle,
+		SettingKeyImages2PageSubtitle,
+		SettingKeyImages2BadgeText,
+		SettingKeyImages2TargetGroupName,
+		SettingKeyImages2ModelName,
+		SettingKeyImages2PricePerImage,
+		SettingKeyImages2RechargePath,
+		SettingKeyImages2NoticeText,
 		SettingKeyLinuxDoConnectEnabled,
 		SettingKeyWeChatConnectEnabled,
 		SettingKeyWeChatConnectAppID,
@@ -497,6 +506,11 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		balanceLowNotifyThreshold = v
 	}
 
+	images2PricePerImage := 0.5
+	if v, err := strconv.ParseFloat(strings.TrimSpace(settings[SettingKeyImages2PricePerImage]), 64); err == nil && v >= 0 {
+		images2PricePerImage = v
+	}
+
 	return &PublicSettings{
 		RegistrationEnabled:              settings[SettingKeyRegistrationEnabled] == "true",
 		EmailVerifyEnabled:               emailVerifyEnabled,
@@ -522,6 +536,15 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		TablePageSizeOptions:             tablePageSizeOptions,
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
+		Images2Enabled:                   settings[SettingKeyImages2Enabled] == "true",
+		Images2PageTitle:                 firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PageTitle]), "ChatGPT Images 2 生图"),
+		Images2PageSubtitle:              strings.TrimSpace(settings[SettingKeyImages2PageSubtitle]),
+		Images2BadgeText:                 strings.TrimSpace(settings[SettingKeyImages2BadgeText]),
+		Images2TargetGroupName:           firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2TargetGroupName]), "openai-chatgpt-images-2"),
+		Images2ModelName:                 firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2ModelName]), "gpt-image-2"),
+		Images2PricePerImage:             images2PricePerImage,
+		Images2RechargePath:              firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2RechargePath]), "/purchase"),
+		Images2NoticeText:                strings.TrimSpace(settings[SettingKeyImages2NoticeText]),
 		LinuxDoOAuthEnabled:              linuxDoEnabled,
 		WeChatOAuthEnabled:               weChatEnabled,
 		WeChatOAuthOpenEnabled:           weChatOpenEnabled,
@@ -665,6 +688,15 @@ type PublicSettingsInjectionPayload struct {
 	TablePageSizeOptions             []int           `json:"table_page_size_options"`
 	CustomMenuItems                  json.RawMessage `json:"custom_menu_items"`
 	CustomEndpoints                  json.RawMessage `json:"custom_endpoints"`
+	Images2Enabled                   bool            `json:"images2_enabled"`
+	Images2PageTitle                 string          `json:"images2_page_title"`
+	Images2PageSubtitle              string          `json:"images2_page_subtitle"`
+	Images2BadgeText                 string          `json:"images2_badge_text"`
+	Images2TargetGroupName           string          `json:"images2_target_group_name"`
+	Images2ModelName                 string          `json:"images2_model_name"`
+	Images2PricePerImage             float64         `json:"images2_price_per_image"`
+	Images2RechargePath              string          `json:"images2_recharge_path"`
+	Images2NoticeText                string          `json:"images2_notice_text"`
 	LinuxDoOAuthEnabled              bool            `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool            `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool            `json:"wechat_oauth_open_enabled"`
@@ -720,6 +752,15 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		TablePageSizeOptions:             settings.TablePageSizeOptions,
 		CustomMenuItems:                  filterUserVisibleMenuItems(settings.CustomMenuItems),
 		CustomEndpoints:                  safeRawJSONArray(settings.CustomEndpoints),
+		Images2Enabled:                   settings.Images2Enabled,
+		Images2PageTitle:                 settings.Images2PageTitle,
+		Images2PageSubtitle:              settings.Images2PageSubtitle,
+		Images2BadgeText:                 settings.Images2BadgeText,
+		Images2TargetGroupName:           settings.Images2TargetGroupName,
+		Images2ModelName:                 settings.Images2ModelName,
+		Images2PricePerImage:             settings.Images2PricePerImage,
+		Images2RechargePath:              settings.Images2RechargePath,
+		Images2NoticeText:                settings.Images2NoticeText,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
 		WeChatOAuthOpenEnabled:           settings.WeChatOAuthOpenEnabled,
@@ -1163,6 +1204,15 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyTablePageSizeOptions] = string(tablePageSizeOptionsJSON)
 	updates[SettingKeyCustomMenuItems] = settings.CustomMenuItems
 	updates[SettingKeyCustomEndpoints] = settings.CustomEndpoints
+	updates[SettingKeyImages2Enabled] = strconv.FormatBool(settings.Images2Enabled)
+	updates[SettingKeyImages2PageTitle] = strings.TrimSpace(settings.Images2PageTitle)
+	updates[SettingKeyImages2PageSubtitle] = strings.TrimSpace(settings.Images2PageSubtitle)
+	updates[SettingKeyImages2BadgeText] = strings.TrimSpace(settings.Images2BadgeText)
+	updates[SettingKeyImages2TargetGroupName] = strings.TrimSpace(settings.Images2TargetGroupName)
+	updates[SettingKeyImages2ModelName] = strings.TrimSpace(settings.Images2ModelName)
+	updates[SettingKeyImages2PricePerImage] = strconv.FormatFloat(settings.Images2PricePerImage, 'f', -1, 64)
+	updates[SettingKeyImages2RechargePath] = strings.TrimSpace(settings.Images2RechargePath)
+	updates[SettingKeyImages2NoticeText] = strings.TrimSpace(settings.Images2NoticeText)
 
 	// 默认配置
 	updates[SettingKeyDefaultConcurrency] = strconv.Itoa(settings.DefaultConcurrency)
@@ -1679,6 +1729,15 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyTablePageSizeOptions:                     "[10,20,50,100]",
 		SettingKeyCustomMenuItems:                          "[]",
 		SettingKeyCustomEndpoints:                          "[]",
+		SettingKeyImages2Enabled:                           "false",
+		SettingKeyImages2PageTitle:                         "ChatGPT Images 2 生图",
+		SettingKeyImages2PageSubtitle:                      "输入提示词，快速生成高质量图像。",
+		SettingKeyImages2BadgeText:                         "HOT",
+		SettingKeyImages2TargetGroupName:                   "openai-chatgpt-images-2",
+		SettingKeyImages2ModelName:                         "gpt-image-2",
+		SettingKeyImages2PricePerImage:                     "0.5",
+		SettingKeyImages2RechargePath:                      "/purchase",
+		SettingKeyImages2NoticeText:                        "图片不会长期保存，请及时下载保存。",
 		SettingKeyWeChatConnectEnabled:                     "false",
 		SettingKeyWeChatConnectAppID:                       "",
 		SettingKeyWeChatConnectAppSecret:                   "",
@@ -1816,7 +1875,20 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		PurchaseSubscriptionURL:          strings.TrimSpace(settings[SettingKeyPurchaseSubscriptionURL]),
 		CustomMenuItems:                  settings[SettingKeyCustomMenuItems],
 		CustomEndpoints:                  settings[SettingKeyCustomEndpoints],
+		Images2Enabled:                   settings[SettingKeyImages2Enabled] == "true",
+		Images2PageTitle:                 firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2PageTitle]), "ChatGPT Images 2 生图"),
+		Images2PageSubtitle:              strings.TrimSpace(settings[SettingKeyImages2PageSubtitle]),
+		Images2BadgeText:                 strings.TrimSpace(settings[SettingKeyImages2BadgeText]),
+		Images2TargetGroupName:           firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2TargetGroupName]), "openai-chatgpt-images-2"),
+		Images2ModelName:                 firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2ModelName]), "gpt-image-2"),
+		Images2RechargePath:              firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2RechargePath]), "/purchase"),
+		Images2NoticeText:                strings.TrimSpace(settings[SettingKeyImages2NoticeText]),
 		BackendModeEnabled:               settings[SettingKeyBackendModeEnabled] == "true",
+	}
+	if v, err := strconv.ParseFloat(strings.TrimSpace(settings[SettingKeyImages2PricePerImage]), 64); err == nil && v >= 0 {
+		result.Images2PricePerImage = v
+	} else {
+		result.Images2PricePerImage = 0.5
 	}
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
 		settings[SettingKeyTableDefaultPageSize],

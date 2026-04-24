@@ -88,7 +88,7 @@
             >
               <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
               <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-              <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+                <span class="sidebar-label sidebar-label-flex" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'"><span class="min-w-0 truncate">{{ item.label }}</span><span v-if="item.badge && !sidebarCollapsed" class="sidebar-item-badge">{{ item.badge }}</span></span>
             </router-link>
           </template>
         </div>
@@ -113,7 +113,7 @@
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
             <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+            <span class="sidebar-label sidebar-label-flex" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'"><span class="min-w-0 truncate">{{ item.label }}</span><span v-if="item.badge && !sidebarCollapsed" class="sidebar-item-badge">{{ item.badge }}</span></span>
           </router-link>
         </div>
       </template>
@@ -133,7 +133,7 @@
           >
             <span v-if="item.iconSvg" class="h-5 w-5 flex-shrink-0 sidebar-svg-icon" v-html="sanitizeSvg(item.iconSvg)"></span>
             <component v-else :is="item.icon" class="h-5 w-5 flex-shrink-0" />
-            <span class="sidebar-label" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'">{{ item.label }}</span>
+            <span class="sidebar-label sidebar-label-flex" :class="{ 'sidebar-label-collapsed': sidebarCollapsed }" :aria-hidden="sidebarCollapsed ? 'true' : 'false'"><span class="min-w-0 truncate">{{ item.label }}</span><span v-if="item.badge && !sidebarCollapsed" class="sidebar-item-badge">{{ item.badge }}</span></span>
           </router-link>
         </div>
       </template>
@@ -193,6 +193,7 @@ interface NavItem {
   label: string
   icon: unknown
   iconSvg?: string
+  badge?: string
   hideInSimpleMode?: boolean
   children?: NavItem[]
   /**
@@ -658,10 +659,11 @@ function buildSelfNavItems(withDashboard: boolean): NavItem[] {
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
-      path: `/custom/${item.id}`,
+      path: resolveCustomMenuPath(item.url, item.id),
       label: item.label,
       icon: null,
       iconSvg: item.icon_svg,
+      badge: resolveCustomMenuBadge(item.label),
     })),
   )
   return items
@@ -694,6 +696,30 @@ const customMenuItemsForAdmin = computed(() => {
     .filter((item) => item.visibility === 'admin')
     .sort((a, b) => a.sort_order - b.sort_order)
 })
+
+function resolveCustomMenuPath(url: string, id: string): string {
+  const trimmed = url.trim()
+  if (!trimmed) return `/custom/${id}`
+  if (trimmed.startsWith('/')) return trimmed
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.origin === window.location.origin) {
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`
+    }
+  } catch {
+    // Keep iframe fallback for non-URL custom content.
+  }
+  return `/custom/${id}`
+}
+
+function resolveCustomMenuBadge(label: string): string | undefined {
+  const trimmed = label.trim()
+  if (/images\s*2/i.test(trimmed) || /生图/.test(trimmed)) {
+    const configured = appStore.cachedPublicSettings?.images2_badge_text?.trim()
+    return configured || undefined
+  }
+  return undefined
+}
 
 // Admin navigation items
 const adminNavItems = computed((): NavItem[] => {
@@ -743,14 +769,14 @@ const adminNavItems = computed((): NavItem[] => {
     filtered.push({ path: '/keys', label: t('nav.apiKeys'), icon: KeyIcon })
     filtered.push({ path: '/admin/settings', label: t('nav.settings'), icon: CogIcon })
     for (const cm of customMenuItemsForAdmin.value) {
-      filtered.push({ path: `/custom/${cm.id}`, label: cm.label, icon: null, iconSvg: cm.icon_svg })
+      filtered.push({ path: resolveCustomMenuPath(cm.url, cm.id), label: cm.label, icon: null, iconSvg: cm.icon_svg, badge: resolveCustomMenuBadge(cm.label) })
     }
     return filtered
   }
 
   visible.push({ path: '/admin/settings', label: t('nav.settings'), icon: CogIcon })
   for (const cm of customMenuItemsForAdmin.value) {
-    visible.push({ path: `/custom/${cm.id}`, label: cm.label, icon: null, iconSvg: cm.icon_svg })
+    visible.push({ path: resolveCustomMenuPath(cm.url, cm.id), label: cm.label, icon: null, iconSvg: cm.icon_svg, badge: resolveCustomMenuBadge(cm.label) })
   }
   return visible
 })
@@ -861,6 +887,18 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.sidebar-item-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: rgba(248, 113, 113, 0.1);
+  padding: 0.12rem 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #f87171;
+}
 .sidebar-logo {
   flex: 0 0 2.25rem;
   min-width: 2.25rem;

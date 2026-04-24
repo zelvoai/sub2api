@@ -174,6 +174,15 @@ export interface PublicSettings {
   table_page_size_options: number[]
   custom_menu_items: CustomMenuItem[]
   custom_endpoints: CustomEndpoint[]
+  images2_enabled: boolean
+  images2_page_title: string
+  images2_page_subtitle: string
+  images2_badge_text: string
+  images2_target_group_name: string
+  images2_model_name: string
+  images2_price_per_image: number
+  images2_recharge_path: string
+  images2_notice_text: string
   linuxdo_oauth_enabled: boolean
   wechat_oauth_enabled: boolean
   wechat_oauth_open_enabled?: boolean

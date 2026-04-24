@@ -103,6 +103,15 @@ type SystemSettings struct {
 	TablePageSizeOptions        []int
 	CustomMenuItems             string // JSON array of custom menu items
 	CustomEndpoints             string // JSON array of custom endpoints
+	Images2Enabled              bool
+	Images2PageTitle            string
+	Images2PageSubtitle         string
+	Images2BadgeText            string
+	Images2TargetGroupName      string
+	Images2ModelName            string
+	Images2PricePerImage        float64
+	Images2RechargePath         string
+	Images2NoticeText           string
 
 	DefaultConcurrency   int
 	DefaultBalance       float64
@@ -201,6 +210,15 @@ type PublicSettings struct {
 	TablePageSizeOptions        []int
 	CustomMenuItems             string // JSON array of custom menu items
 	CustomEndpoints             string // JSON array of custom endpoints
+	Images2Enabled              bool    `json:"images2_enabled"`
+	Images2PageTitle            string  `json:"images2_page_title"`
+	Images2PageSubtitle         string  `json:"images2_page_subtitle"`
+	Images2BadgeText            string  `json:"images2_badge_text"`
+	Images2TargetGroupName      string  `json:"images2_target_group_name"`
+	Images2ModelName            string  `json:"images2_model_name"`
+	Images2PricePerImage        float64 `json:"images2_price_per_image"`
+	Images2RechargePath         string  `json:"images2_recharge_path"`
+	Images2NoticeText           string  `json:"images2_notice_text"`
 
 	LinuxDoOAuthEnabled      bool
 	WeChatOAuthEnabled       bool

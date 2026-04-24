@@ -346,6 +346,15 @@ export interface SystemSettings {
   backend_mode_enabled: boolean;
   custom_menu_items: CustomMenuItem[];
   custom_endpoints: CustomEndpoint[];
+  images2_enabled: boolean;
+  images2_page_title: string;
+  images2_page_subtitle: string;
+  images2_badge_text: string;
+  images2_target_group_name: string;
+  images2_model_name: string;
+  images2_price_per_image: number;
+  images2_recharge_path: string;
+  images2_notice_text: string;
   // SMTP settings
   smtp_host: string;
   smtp_port: number;
@@ -520,6 +529,15 @@ export interface UpdateSettingsRequest {
   contact_info?: string;
   doc_url?: string;
   home_content?: string;
+  images2_enabled?: boolean;
+  images2_page_title?: string;
+  images2_page_subtitle?: string;
+  images2_badge_text?: string;
+  images2_target_group_name?: string;
+  images2_model_name?: string;
+  images2_price_per_image?: number;
+  images2_recharge_path?: string;
+  images2_notice_text?: string;
   hide_ccs_import_button?: boolean;
   table_default_page_size?: number;
   table_page_size_options?: number[];

@@ -120,3 +120,42 @@ func TestSettingHandler_GetPublicSettings_ExposesWeChatOAuthModeCapabilities(t *
 	require.True(t, resp.Data.WeChatOAuthOpenEnabled)
 	require.True(t, resp.Data.WeChatOAuthMPEnabled)
 }
+
+func TestSettingHandler_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	h := NewSettingHandler(service.NewSettingService(&settingHandlerPublicRepoStub{
+		values: map[string]string{
+			service.SettingKeyImages2Enabled:         "true",
+			service.SettingKeyImages2PageTitle:       "ChatGPT Images 2 生图",
+			service.SettingKeyImages2TargetGroupName: "openai-chatgpt-images-2",
+			service.SettingKeyImages2ModelName:       "gpt-image-2",
+			service.SettingKeyImages2PricePerImage:   "0.5",
+		},
+	}, &config.Config{}), "test-version")
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/settings/public", nil)
+
+	h.GetPublicSettings(c)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+
+	var resp struct {
+		Code int `json:"code"`
+		Data struct {
+			Images2Enabled         bool    `json:"images2_enabled"`
+			Images2PageTitle       string  `json:"images2_page_title"`
+			Images2TargetGroupName string  `json:"images2_target_group_name"`
+			Images2ModelName       string  `json:"images2_model_name"`
+			Images2PricePerImage   float64 `json:"images2_price_per_image"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
+	require.Equal(t, 0, resp.Code)
+	require.True(t, resp.Data.Images2Enabled)
+	require.Equal(t, "ChatGPT Images 2 生图", resp.Data.Images2PageTitle)
+	require.Equal(t, "openai-chatgpt-images-2", resp.Data.Images2TargetGroupName)
+	require.Equal(t, "gpt-image-2", resp.Data.Images2ModelName)
+	require.Equal(t, 0.5, resp.Data.Images2PricePerImage)
+}

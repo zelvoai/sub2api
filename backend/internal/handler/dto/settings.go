@@ -105,6 +105,15 @@ type SystemSettings struct {
 	TablePageSizeOptions        []int            `json:"table_page_size_options"`
 	CustomMenuItems             []CustomMenuItem `json:"custom_menu_items"`
 	CustomEndpoints             []CustomEndpoint `json:"custom_endpoints"`
+	Images2Enabled              bool             `json:"images2_enabled"`
+	Images2PageTitle            string           `json:"images2_page_title"`
+	Images2PageSubtitle         string           `json:"images2_page_subtitle"`
+	Images2BadgeText            string           `json:"images2_badge_text"`
+	Images2TargetGroupName      string           `json:"images2_target_group_name"`
+	Images2ModelName            string           `json:"images2_model_name"`
+	Images2PricePerImage        float64          `json:"images2_price_per_image"`
+	Images2RechargePath         string           `json:"images2_recharge_path"`
+	Images2NoticeText           string           `json:"images2_notice_text"`
 
 	DefaultConcurrency   int                          `json:"default_concurrency"`
 	DefaultBalance       float64                      `json:"default_balance"`
@@ -223,6 +232,15 @@ type PublicSettings struct {
 	TablePageSizeOptions             []int            `json:"table_page_size_options"`
 	CustomMenuItems                  []CustomMenuItem `json:"custom_menu_items"`
 	CustomEndpoints                  []CustomEndpoint `json:"custom_endpoints"`
+	Images2Enabled                   bool             `json:"images2_enabled"`
+	Images2PageTitle                 string           `json:"images2_page_title"`
+	Images2PageSubtitle              string           `json:"images2_page_subtitle"`
+	Images2BadgeText                 string           `json:"images2_badge_text"`
+	Images2TargetGroupName           string           `json:"images2_target_group_name"`
+	Images2ModelName                 string           `json:"images2_model_name"`
+	Images2PricePerImage             float64          `json:"images2_price_per_image"`
+	Images2RechargePath              string           `json:"images2_recharge_path"`
+	Images2NoticeText                string           `json:"images2_notice_text"`
 	LinuxDoOAuthEnabled              bool             `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool             `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool             `json:"wechat_oauth_open_enabled"`
