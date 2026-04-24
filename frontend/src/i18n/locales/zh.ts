@@ -5889,6 +5889,7 @@ export default {
     ready: '可立即生成',
     insufficientBalance: '余额不足',
     insufficientBalanceHint: '余额不足，请先充值后再生成图片。',
+    insufficientRechargeCta: '余额不足，请先充值后再生成，去充值 👉',
     promptLabel: '输入提示词',
     promptPlaceholder: '例如：一只戴着镜面头盔的白虎机甲站在雨夜霓虹街头，电影感光影，超高细节。',
     generate: '开始生图',

@@ -5728,6 +5728,7 @@ export default {
     ready: 'Ready to generate',
     insufficientBalance: 'Insufficient balance',
     insufficientBalanceHint: 'Your balance is insufficient. Please recharge before generating images.',
+    insufficientRechargeCta: 'Insufficient balance. Recharge before generating ->',
     promptLabel: 'Prompt',
     promptPlaceholder: 'Example: A white tiger mech wearing a mirrored helmet on a neon rainy street, cinematic lighting, ultra-detailed.',
     generate: 'Generate image',

@@ -28,12 +28,9 @@
             {{ t('images2.newImage') }}
           </button>
           <button class="images2-link" @click="goRecharge">
-            {{ t('images2.goRecharge') }}
+            {{ rechargeCtaText }}
           </button>
         </div>
-        <p v-if="!canGenerate" class="images2-balance-warning">
-          {{ t('images2.insufficientBalanceHint') }}
-        </p>
       </section>
 
       <section class="images2-stage" :class="isGenerating ? 'is-generating' : ''">
@@ -86,6 +83,9 @@ const unitPrice = computed(() => settings.value?.images2_price_per_image ?? 0.5)
 const canGenerate = computed(() => (user.value?.balance ?? 0) >= unitPrice.value)
 const balanceText = computed(() => (user.value?.balance ?? 0).toFixed(2))
 const priceText = computed(() => unitPrice.value.toFixed(2))
+const rechargeCtaText = computed(() => canGenerate.value
+  ? t('images2.goRecharge')
+  : t('images2.insufficientRechargeCta'))
 
 onMounted(async () => {
   await Promise.allSettled([appStore.fetchPublicSettings(), authStore.refreshUser()])
@@ -140,7 +140,7 @@ function downloadImage() {
 .images2-shell {
   margin: 0 auto;
   max-width: 980px;
-  padding: 0.5rem 0 1.5rem;
+  padding: 1rem 0 1.5rem;
   color: #0f172a;
   min-height: calc(100vh - 120px);
 }
@@ -257,13 +257,6 @@ function downloadImage() {
   background: transparent;
   color: #fca5a5;
   padding: 0.4rem 0.2rem;
-}
-
-.images2-balance-warning {
-  margin: 0.85rem 0 0;
-  padding-left: 0.4rem;
-  color: #dc2626;
-  font-size: 0.92rem;
 }
 
 .images2-stage {
@@ -392,20 +385,43 @@ function downloadImage() {
   color: #94a3b8;
 }
 
-.dark .images2-balance-warning {
-  color: #fda4af;
-}
-
 @keyframes images2-spin {
   to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
   .images2-header,
-  .images2-stage-footer,
-  .images2-toolbar {
+  .images2-stage-footer {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .images2-header {
+    align-items: center;
+    text-align: center;
+  }
+
+  .images2-balance-pill {
+    justify-content: center;
+    align-self: center;
+  }
+
+  .images2-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+
+  .images2-primary,
+  .images2-secondary {
+    width: 100%;
+  }
+
+  .images2-link {
+    grid-column: 1 / -1;
+    justify-self: center;
+    margin-top: 0.15rem;
+    white-space: nowrap;
   }
 
   .images2-stage,
