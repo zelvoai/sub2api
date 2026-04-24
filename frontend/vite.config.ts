@@ -110,6 +110,10 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: devPort,
+      watch: {
+        usePolling: true,
+        interval: 300
+      },
       proxy: {
         '/api': {
           target: backendUrl,

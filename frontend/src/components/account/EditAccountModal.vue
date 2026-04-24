@@ -139,7 +139,7 @@
 
             <!-- Whitelist Mode -->
             <div v-if="modelRestrictionMode === 'whitelist'">
-              <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" />
+              <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :fetch-request="whitelistFetchRequest" />
               <p class="text-xs text-gray-500 dark:text-gray-400">
                 {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
                 <span v-if="allowedModels.length === 0">{{
@@ -454,7 +454,7 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" />
+            <ModelWhitelistSelector v-model="allowedModels" :platform="account?.platform || 'anthropic'" :fetch-request="whitelistFetchRequest" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0">{{
@@ -673,7 +673,7 @@
 
           <!-- Whitelist Mode -->
           <div v-if="modelRestrictionMode === 'whitelist'">
-            <ModelWhitelistSelector v-model="allowedModels" platform="anthropic" />
+            <ModelWhitelistSelector v-model="allowedModels" platform="anthropic" :fetch-request="whitelistFetchRequest" />
             <p class="text-xs text-gray-500 dark:text-gray-400">
               {{ t('admin.accounts.selectedModels', { count: allowedModels.length }) }}
               <span v-if="allowedModels.length === 0">{{ t('admin.accounts.supportsAllModels') }}</span>
@@ -770,6 +770,18 @@
         <div>
           <div class="mb-3 rounded-lg bg-purple-50 p-3 dark:bg-purple-900/20">
             <p class="text-xs text-purple-700 dark:text-purple-400">{{ t('admin.accounts.mapRequestModels') }}</p>
+          </div>
+
+          <div class="mb-3">
+            <ModelWhitelistSelector
+              v-model="antigravityExactModels"
+              platform="antigravity"
+              :fetch-request="antigravityFetchRequest"
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ t('admin.accounts.selectedModels', { count: antigravityExactModels.length }) }}
+              <span v-if="antigravityExactModels.length === 0">{{ t('admin.accounts.supportsAllModels') }}</span>
+            </p>
           </div>
 
           <div v-if="antigravityModelMappings.length > 0" class="mb-3 space-y-2">
@@ -2048,6 +2060,55 @@ const openAIWSModeConcurrencyHintKey = computed(() =>
 const isOpenAIModelRestrictionDisabled = computed(() =>
   props.account?.platform === 'openai' && openaiPassthroughEnabled.value
 )
+
+const whitelistFetchRequest = computed(() => {
+  const account = props.account
+  if (!account || account.type !== 'apikey') {
+    return null
+  }
+  if (!['openai', 'anthropic', 'gemini', 'antigravity'].includes(account.platform)) {
+    return null
+  }
+  const currentCredentials = (account.credentials as Record<string, unknown>) || {}
+  return {
+    platform: account.platform,
+    type: account.type,
+    credentials: {
+      base_url: editBaseUrl.value.trim() || defaultBaseUrl.value,
+      api_key: editApiKey.value.trim() || String(currentCredentials.api_key || '')
+    }
+  }
+})
+
+const antigravityFetchRequest = computed(() => {
+  if (props.account?.platform !== 'antigravity') {
+    return null
+  }
+  return {
+    platform: 'antigravity',
+    type: props.account.type
+  }
+})
+
+const antigravityExactModels = computed<string[]>({
+  get: () => antigravityModelMappings.value
+    .filter(mapping => {
+      const from = mapping.from.trim()
+      const to = mapping.to.trim()
+      return from !== '' && from === to && !from.includes('*')
+    })
+    .map(mapping => mapping.from.trim()),
+  set: (models) => {
+    const preservedMappings = antigravityModelMappings.value.filter(mapping => {
+      const from = mapping.from.trim()
+      const to = mapping.to.trim()
+      return from === '' || from !== to || from.includes('*')
+    })
+    const identityMappings = Array.from(new Set(models.map(model => model.trim()).filter(Boolean)))
+      .map(model => ({ from: model, to: model }))
+    antigravityModelMappings.value = [...preservedMappings, ...identityMappings]
+  }
+})
 
 // Computed: current preset mappings based on platform
 const presetMappings = computed(() => getPresetMappingsByPlatform(props.account?.platform || 'anthropic'))
