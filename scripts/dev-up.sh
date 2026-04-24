@@ -8,6 +8,7 @@ DEPLOY_DIR="${REPO_ROOT}/deploy"
 ENV_FILE="${DEPLOY_DIR}/.env"
 ENV_EXAMPLE="${DEPLOY_DIR}/.env.example"
 COMPOSE_FILE="${DEPLOY_DIR}/docker-compose.dev.yml"
+TMP_OVERRIDE_FILE=""
 
 usage() {
   cat <<'EOF'
@@ -28,6 +29,35 @@ require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     echo "缺少命令: $1" >&2
     exit 1
+  fi
+}
+
+cleanup() {
+  if [[ -n "${TMP_OVERRIDE_FILE}" && -f "${TMP_OVERRIDE_FILE}" ]]; then
+    rm -f "${TMP_OVERRIDE_FILE}"
+  fi
+}
+
+build_compose_args() {
+  local -n out_ref=$1
+  out_ref=(--env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+
+  if [[ "${FORCE_DOCKER_NAMED_VOLUMES:-}" == "1" || "${REPO_ROOT}" == /mnt/* ]]; then
+    TMP_OVERRIDE_FILE="$(mktemp)"
+    cat > "${TMP_OVERRIDE_FILE}" <<'EOF'
+services:
+  postgres:
+    volumes:
+      - sub2api_dev_postgres_data:/var/lib/postgresql/data
+  redis:
+    volumes:
+      - sub2api_dev_redis_data:/data
+
+volumes:
+  sub2api_dev_postgres_data:
+  sub2api_dev_redis_data:
+EOF
+    out_ref+=(-f "${TMP_OVERRIDE_FILE}")
   fi
 }
 
@@ -79,6 +109,7 @@ ensure_dirs() {
 
 main() {
   local action="${1:-up}"
+  local compose_args=()
 
   case "${action}" in
     up|build|rebuild|down|restart|logs|ps) ;;
@@ -95,39 +126,44 @@ main() {
 
   require_cmd docker
   require_cmd openssl
+  trap cleanup EXIT
 
   ensure_env
   ensure_dirs
+  build_compose_args compose_args
 
   cd "${DEPLOY_DIR}"
 
   case "${action}" in
     up)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d
+      docker compose "${compose_args[@]}" up -d
       echo
       echo "本地开发环境已启动:"
       echo "  Web: http://localhost:$(awk -F= '/^SERVER_PORT=/{print $2}' "${ENV_FILE}" | tail -n1)"
       echo "  日志: ./scripts/dev-up.sh logs"
+      if [[ -n "${TMP_OVERRIDE_FILE}" ]]; then
+        echo "  提示: 当前仓库位于 /mnt/*，PostgreSQL/Redis 已自动改用 Docker named volumes，避免 Windows/NTFS 权限问题"
+      fi
       ;;
     build)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build -d
+      docker compose "${compose_args[@]}" up --build -d
       ;;
     rebuild)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up --build -d
+      docker compose "${compose_args[@]}" down
+      docker compose "${compose_args[@]}" up --build -d
       ;;
     down)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
+      docker compose "${compose_args[@]}" down
       ;;
     restart)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" down
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d
+      docker compose "${compose_args[@]}" down
+      docker compose "${compose_args[@]}" up -d
       ;;
     logs)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" logs -f sub2api
+      docker compose "${compose_args[@]}" logs -f sub2api
       ;;
     ps)
-      docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
+      docker compose "${compose_args[@]}" ps
       ;;
   esac
 }
