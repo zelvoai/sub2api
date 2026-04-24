@@ -5735,7 +5735,7 @@ export default {
     edit: 'Edit image',
     generating: 'Generating...',
     newImage: 'New image',
-    goRecharge: 'Recharge',
+    goRecharge: 'Recharge ->',
     tipsTitle: 'Prompt Tips',
     tipsBody: 'Describe the subject, camera language, lighting, materials, and style together for more stable and premium-looking results.',
     readyHint: 'You have enough balance to start generating now.',

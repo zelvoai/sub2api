@@ -5896,7 +5896,7 @@ export default {
     edit: '修改图片',
     generating: '生成中...',
     newImage: '新建图片',
-    goRecharge: '去充值',
+    goRecharge: '去充值 👉',
     tipsTitle: '创作提示',
     tipsBody: '建议把主体、镜头语言、光线、材质和风格一起描述，会更容易得到稳定且有质感的结果。',
     readyHint: '余额充足，可以直接开始生成。',

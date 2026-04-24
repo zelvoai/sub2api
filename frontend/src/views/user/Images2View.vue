@@ -12,6 +12,11 @@
         </div>
       </header>
 
+      <div v-if="errorMessage" class="images2-error-banner">
+        <strong>{{ t('images2.generateFailed') }}</strong>
+        <span>{{ errorMessage }}</span>
+      </div>
+
       <section class="images2-composer">
         <textarea
           v-model="prompt"
@@ -73,6 +78,7 @@ const prompt = ref('')
 const isGenerating = ref(false)
 const imageUrl = ref('')
 const revisedPrompt = ref('')
+const errorMessage = ref('')
 
 const settings = computed(() => appStore.cachedPublicSettings)
 const user = computed(() => authStore.user)
@@ -95,6 +101,7 @@ async function generateImage() {
   if (!prompt.value.trim() || isGenerating.value || !canGenerate.value) return
   isGenerating.value = true
   revisedPrompt.value = ''
+  errorMessage.value = ''
   try {
     const result = imageUrl.value
       ? await images2API.edit(prompt.value.trim(), imageUrl.value)
@@ -110,8 +117,15 @@ async function generateImage() {
     revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
     await authStore.refreshUser()
   } catch (error: any) {
-    const message = error?.response?.data?.error?.message || error?.response?.data?.message || t('images2.generateFailed')
-    appStore.showError(message)
+    const message = error?.response?.data?.error?.message
+      || error?.response?.data?.message
+      || error?.message
+      || t('images2.generateFailed')
+    const normalized = message === t('images2.generateFailed')
+      ? t('common.error')
+      : message
+    errorMessage.value = normalized
+    appStore.showError(normalized)
   } finally {
     isGenerating.value = false
   }
@@ -121,6 +135,7 @@ function resetCanvas() {
   prompt.value = ''
   imageUrl.value = ''
   revisedPrompt.value = ''
+  errorMessage.value = ''
 }
 
 function goRecharge() {
@@ -195,6 +210,19 @@ function downloadImage() {
 
 .images2-composer {
   padding: 1rem;
+}
+
+.images2-error-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 0.9rem;
+  border-radius: 18px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: rgba(254, 242, 242, 0.92);
+  padding: 0.85rem 1rem;
+  color: #b91c1c;
+  font-size: 0.92rem;
 }
 
 .images2-textarea {
@@ -296,7 +324,7 @@ function downloadImage() {
 }
 
 .images2-loader p {
-  margin: 0.55rem 0 0;
+  margin: 1.25rem 0 0;
 }
 
 .images2-image {
@@ -334,6 +362,12 @@ function downloadImage() {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(15, 23, 42, 0.72);
   color: #cbd5e1;
+}
+
+.dark .images2-error-banner {
+  border-color: rgba(248, 113, 113, 0.26);
+  background: rgba(69, 10, 10, 0.55);
+  color: #fecaca;
 }
 
 .dark .images2-composer,
