@@ -5919,7 +5919,7 @@ export default {
     resultEditHint: '想继续细化这张图的话，直接调整提示词后点击“基于当前图编辑”就行，系统会把当前图片和新提示词一起提交。',
     generating: '生成中...',
     newImage: '新图片',
-    rechargePrimary: '去充值',
+    rechargePrimary: '余额不足，去充值 »',
     goRecharge: '去充值 👉',
     tipsTitle: '创作提示',
     tipsBody: '建议把主体、镜头语言、光线、材质和风格一起描述，会更容易得到稳定且有质感的结果。',

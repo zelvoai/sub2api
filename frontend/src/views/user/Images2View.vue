@@ -64,9 +64,9 @@
             <Icon :name="primaryActionIcon" size="sm" :stroke-width="2" />
             {{ primaryActionText }}
           </button>
-          <button class="images2-secondary" :disabled="isGenerating" @click="resetCanvas">
+          <button v-if="hasImage" class="images2-secondary" :disabled="isGenerating || !prompt.trim()" @click="handleEditAction">
             <Icon name="plus" size="sm" :stroke-width="2" />
-            {{ t('images2.newImage') }}
+            {{ t('images2.editCurrent') }}
           </button>
         </div>
       </section>
@@ -139,12 +139,12 @@ const hasImage = computed(() => Boolean(imageUrl.value))
 const displayImageUrl = computed(() => imageUrl.value)
 const primaryActionIcon = computed(() => {
   if (!canGenerate.value) return 'creditCard'
-  return hasImage.value ? 'edit' : 'sparkles'
+  return 'sparkles'
 })
 const primaryActionText = computed(() => {
   if (isGenerating.value) return t('images2.generating')
   if (!canGenerate.value) return t('images2.rechargePrimary')
-  return hasImage.value ? t('images2.editCurrent') : t('images2.generate')
+  return t('images2.generate')
 })
 
 onMounted(async () => {
@@ -157,9 +157,42 @@ async function generateImage() {
   revisedPrompt.value = ''
   errorMessage.value = ''
   try {
-    const result = imageUrl.value
-      ? await images2API.edit(prompt.value.trim(), imageUrl.value, selectedSize.value)
-      : await images2API.generate(prompt.value.trim(), selectedSize.value)
+    const result = await images2API.generate(prompt.value.trim(), selectedSize.value)
+    const first = result.images?.[0]
+    if (typeof first?.b64_json === 'string' && first.b64_json) {
+      imageUrl.value = `data:image/png;base64,${first.b64_json}`
+    } else if (typeof first?.url === 'string' && first.url) {
+      imageUrl.value = first.url
+    } else {
+      imageUrl.value = ''
+    }
+    revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
+    if (imageUrl.value) {
+      appStore.showSuccess(t('images2.generateSuccessToast'), 8000)
+    }
+    await authStore.refreshUser()
+  } catch (error: any) {
+    const message = error?.response?.data?.error?.message
+      || error?.response?.data?.message
+      || error?.message
+      || t('images2.generateFailed')
+    const normalized = message === t('images2.generateFailed')
+      ? t('common.error')
+      : message
+    errorMessage.value = normalized
+    appStore.showError(normalized)
+  } finally {
+    isGenerating.value = false
+  }
+}
+
+async function editCurrentImage() {
+  if (!prompt.value.trim() || isGenerating.value || !canGenerate.value || !imageUrl.value) return
+  isGenerating.value = true
+  revisedPrompt.value = ''
+  errorMessage.value = ''
+  try {
+    const result = await images2API.edit(prompt.value.trim(), imageUrl.value, selectedSize.value)
     const first = result.images?.[0]
     if (typeof first?.b64_json === 'string' && first.b64_json) {
       imageUrl.value = `data:image/png;base64,${first.b64_json}`
@@ -197,11 +230,8 @@ function handlePrimaryAction() {
   void generateImage()
 }
 
-function resetCanvas() {
-  prompt.value = ''
-  imageUrl.value = ''
-  revisedPrompt.value = ''
-  errorMessage.value = ''
+function handleEditAction() {
+  void editCurrentImage()
 }
 
 function goRecharge() {
