@@ -187,6 +187,7 @@ export interface PublicSettings {
   images2_target_group_name: string
   images2_model_name: string
   images2_price_per_image: number
+  images2_max_attachments: number
   images2_recharge_path: string
   images2_notice_text: string
   images2_promo_banner_enabled: boolean

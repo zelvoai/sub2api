@@ -190,6 +190,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		Images2TargetGroupName:                 settings.Images2TargetGroupName,
 		Images2ModelName:                       settings.Images2ModelName,
 		Images2PricePerImage:                   settings.Images2PricePerImage,
+		Images2MaxAttachments:                  settings.Images2MaxAttachments,
 		Images2RechargePath:                    settings.Images2RechargePath,
 		Images2NoticeText:                      settings.Images2NoticeText,
 		Images2PromoBannerEnabled:              settings.Images2PromoBannerEnabled,
@@ -354,6 +355,7 @@ type UpdateSettingsRequest struct {
 	Images2TargetGroupName      *string               `json:"images2_target_group_name"`
 	Images2ModelName            *string               `json:"images2_model_name"`
 	Images2PricePerImage        *float64              `json:"images2_price_per_image"`
+	Images2MaxAttachments       *int                  `json:"images2_max_attachments"`
 	Images2RechargePath         *string               `json:"images2_recharge_path"`
 	Images2NoticeText           *string               `json:"images2_notice_text"`
 	Images2PromoBannerEnabled   *bool                 `json:"images2_promo_banner_enabled"`
@@ -1197,6 +1199,12 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 			}
 			return previousSettings.Images2NoticeText
 		}(),
+		Images2MaxAttachments: func() int {
+			if req.Images2MaxAttachments != nil {
+				return *req.Images2MaxAttachments
+			}
+			return previousSettings.Images2MaxAttachments
+		}(),
 		Images2PromoBannerEnabled: func() bool {
 			if req.Images2PromoBannerEnabled != nil {
 				return *req.Images2PromoBannerEnabled
@@ -1542,6 +1550,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		Images2TargetGroupName:                 updatedSettings.Images2TargetGroupName,
 		Images2ModelName:                       updatedSettings.Images2ModelName,
 		Images2PricePerImage:                   updatedSettings.Images2PricePerImage,
+		Images2MaxAttachments:                  updatedSettings.Images2MaxAttachments,
 		Images2RechargePath:                    updatedSettings.Images2RechargePath,
 		Images2NoticeText:                      updatedSettings.Images2NoticeText,
 		Images2PromoBannerEnabled:              updatedSettings.Images2PromoBannerEnabled,
@@ -1941,6 +1950,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if before.Images2PricePerImage != after.Images2PricePerImage {
 		changed = append(changed, "images2_price_per_image")
+	}
+	if before.Images2MaxAttachments != after.Images2MaxAttachments {
+		changed = append(changed, "images2_max_attachments")
 	}
 	if before.Images2RechargePath != after.Images2RechargePath {
 		changed = append(changed, "images2_recharge_path")

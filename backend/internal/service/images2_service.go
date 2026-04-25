@@ -23,9 +23,11 @@ type Images2Service struct {
 }
 
 type Images2GenerateRequest struct {
-	Prompt   string `json:"prompt"`
-	ImageURL string `json:"image_url,omitempty"`
-	Size     string `json:"size,omitempty"`
+	Prompt              string   `json:"prompt"`
+	ImageURL            string   `json:"image_url,omitempty"`
+	Attachments         []string `json:"attachments,omitempty"`
+	PreserveInputAspect bool     `json:"preserve_input_aspect,omitempty"`
+	Size                string   `json:"size,omitempty"`
 }
 
 type Images2GenerateResponse struct {
@@ -42,6 +44,8 @@ type Images2PreparedRequest struct {
 	Prompt       string
 	ModelName    string
 	ImageURL     string
+	Attachments  []string
+	PreserveInputAspect bool
 	Size         string
 }
 
@@ -69,6 +73,11 @@ func (s *Images2Service) Prepare(ctx context.Context, userID int64, req Images2G
 	}
 	if !settings.Images2Enabled {
 		return nil, ErrImages2Disabled
+	}
+
+	attachments, err := normalizeImages2Attachments(req.Attachments, settings.Images2MaxAttachments)
+	if err != nil {
+		return nil, err
 	}
 
 	user, err := s.users.GetByID(ctx, userID)
@@ -110,6 +119,8 @@ func (s *Images2Service) Prepare(ctx context.Context, userID int64, req Images2G
 		Prompt:       strings.TrimSpace(req.Prompt),
 		ModelName:    settings.Images2ModelName,
 		ImageURL:     strings.TrimSpace(req.ImageURL),
+		Attachments:  attachments,
+		PreserveInputAspect: req.PreserveInputAspect,
 		Size:         size,
 	}, nil
 }
@@ -125,6 +136,30 @@ func normalizeImages2Size(size string) (string, error) {
 	default:
 		return "", infraerrors.BadRequest("IMAGES2_SIZE_INVALID", "size must be one of 1024x1024, 1536x1024, 1024x1536")
 	}
+}
+
+func normalizeImages2Attachments(raw []string, maxCount int) ([]string, error) {
+	if maxCount <= 0 {
+		maxCount = 5
+	}
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	if len(raw) > maxCount {
+		return nil, infraerrors.BadRequest("IMAGES2_ATTACHMENTS_LIMIT", fmt.Sprintf("attachments must not exceed %d images", maxCount))
+	}
+	attachments := make([]string, 0, len(raw))
+	for _, item := range raw {
+		normalized := strings.TrimSpace(item)
+		if normalized == "" {
+			continue
+		}
+		if !strings.HasPrefix(normalized, "data:image/") || !strings.Contains(normalized, ";base64,") {
+			return nil, infraerrors.BadRequest("IMAGES2_ATTACHMENT_INVALID", "attachments must be base64-encoded image data URLs")
+		}
+		attachments = append(attachments, normalized)
+	}
+	return attachments, nil
 }
 
 func (s *Images2Service) resolveGroupByName(ctx context.Context, name string) (*Group, error) {

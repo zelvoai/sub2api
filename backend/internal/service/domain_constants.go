@@ -175,6 +175,7 @@ const (
 	SettingKeyImages2TargetGroupName      = "images2_target_group_name"     // Images 2 目标分组名
 	SettingKeyImages2ModelName            = "images2_model_name"            // Images 2 目标模型名
 	SettingKeyImages2PricePerImage        = "images2_price_per_image"       // Images 2 单张价格（USD）
+	SettingKeyImages2MaxAttachments       = "images2_max_attachments"       // Images 2 参考图最大数量
 	SettingKeyImages2RechargePath         = "images2_recharge_path"         // Images 2 充值跳转路径
 	SettingKeyImages2NoticeText           = "images2_notice_text"           // Images 2 页面提示文本
 	SettingKeyImages2PromoBannerEnabled    = "images2_promo_banner_enabled"  // Images 2 顶部广告横幅开关

@@ -110,6 +110,7 @@ type SystemSettings struct {
 	Images2TargetGroupName      string
 	Images2ModelName            string
 	Images2PricePerImage        float64
+	Images2MaxAttachments       int
 	Images2RechargePath         string
 	Images2NoticeText           string
 	Images2PromoBannerEnabled   bool
@@ -221,6 +222,7 @@ type PublicSettings struct {
 	Images2TargetGroupName      string  `json:"images2_target_group_name"`
 	Images2ModelName            string  `json:"images2_model_name"`
 	Images2PricePerImage        float64 `json:"images2_price_per_image"`
+	Images2MaxAttachments       int     `json:"images2_max_attachments"`
 	Images2RechargePath         string  `json:"images2_recharge_path"`
 	Images2NoticeText           string  `json:"images2_notice_text"`
 	Images2PromoBannerEnabled   bool    `json:"images2_promo_banner_enabled"`

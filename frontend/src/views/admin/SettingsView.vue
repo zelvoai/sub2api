@@ -3913,6 +3913,13 @@
                 <input v-model.number="form.images2_price_per_image" type="number" step="0.01" min="0" class="input" />
               </div>
               <div>
+                <label class="input-label">{{ t('admin.settings.features.images2.maxAttachments') }}</label>
+                <input v-model.number="form.images2_max_attachments" type="number" step="1" min="1" max="10" class="input" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
                 <label class="input-label">{{ t('admin.settings.features.images2.rechargePath') }}</label>
                 <input v-model="form.images2_recharge_path" type="text" class="input" />
               </div>
@@ -5124,6 +5131,7 @@ const form = reactive<SettingsForm>({
   images2_target_group_name: 'openai-chatgpt-images-2',
   images2_model_name: 'gpt-image-2',
   images2_price_per_image: 0.5,
+  images2_max_attachments: 5,
   images2_recharge_path: '/purchase',
   images2_notice_text: '图片不会长期保存，请及时下载保存。',
   images2_promo_banner_enabled: false,
@@ -6028,6 +6036,7 @@ async function saveSettings() {
       images2_target_group_name: form.images2_target_group_name,
       images2_model_name: form.images2_model_name,
       images2_price_per_image: Number(form.images2_price_per_image) || 0.5,
+      images2_max_attachments: Math.min(10, Math.max(1, Number(form.images2_max_attachments) || 5)),
       images2_recharge_path: form.images2_recharge_path,
       images2_notice_text: form.images2_notice_text,
       images2_promo_banner_enabled: form.images2_promo_banner_enabled,

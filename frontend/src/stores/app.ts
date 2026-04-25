@@ -347,6 +347,7 @@ export const useAppStore = defineStore('app', () => {
         images2_target_group_name: 'openai-chatgpt-images-2',
         images2_model_name: 'gpt-image-2',
         images2_price_per_image: 0.5,
+        images2_max_attachments: 5,
         images2_recharge_path: '/purchase',
         images2_notice_text: '',
         images2_promo_banner_enabled: false,

@@ -44,22 +44,31 @@ func (h *Images2Handler) Generate(c *gin.Context) {
 		return
 	}
 
+	images := make([]map[string]string, 0, len(prepared.Attachments)+1)
+	if prepared.ImageURL != "" {
+		images = append(images, map[string]string{"image_url": prepared.ImageURL})
+	}
+	for _, attachment := range prepared.Attachments {
+		images = append(images, map[string]string{"image_url": attachment})
+	}
+
 	body, err := json.Marshal(map[string]any{
 		"model":           prepared.ModelName,
 		"prompt":          prepared.Prompt,
 		"response_format": "b64_json",
 		"size":            prepared.Size,
 	})
-	if prepared.ImageURL != "" {
-		body, err = json.Marshal(map[string]any{
+	if len(images) > 0 {
+		payload := map[string]any{
 			"model":           prepared.ModelName,
 			"prompt":          prepared.Prompt,
 			"response_format": "b64_json",
-			"size":            prepared.Size,
-			"images": []map[string]string{{
-				"image_url": prepared.ImageURL,
-			}},
-		})
+			"images":          images,
+		}
+		if !prepared.PreserveInputAspect {
+			payload["size"] = prepared.Size
+		}
+		body, err = json.Marshal(payload)
 	}
 	if err != nil {
 		response.Error(c, http.StatusInternalServerError, "Failed to build image request")
@@ -69,7 +78,7 @@ func (h *Images2Handler) Generate(c *gin.Context) {
 	proxyCtx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
 	defer cancel()
 	endpoint := "/v1/images/generations"
-	if prepared.ImageURL != "" {
+	if len(images) > 0 {
 		endpoint = "/v1/images/edits"
 	}
 	proxyReq, err := http.NewRequestWithContext(proxyCtx, http.MethodPost, endpoint, bytes.NewReader(body))

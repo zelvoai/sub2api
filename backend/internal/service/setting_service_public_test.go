@@ -153,17 +153,18 @@ func TestSettingService_GetPublicSettings_FallsBackToConfigForWeChatOAuthCapabil
 }
 
 func TestSettingService_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
-	repo := &settingPublicRepoStub{
-		values: map[string]string{
-			SettingKeyImages2Enabled:         "true",
-			SettingKeyImages2PageTitle:       "ChatGPT Images 2 生图",
-			SettingKeyImages2BadgeText:       "HOT",
-			SettingKeyImages2TargetGroupName: "openai-chatgpt-images-2",
-			SettingKeyImages2ModelName:       "gpt-image-2",
-			SettingKeyImages2PricePerImage:   "0.5",
-			SettingKeyImages2RechargePath:    "/purchase",
-		},
-	}
+		repo := &settingPublicRepoStub{
+			values: map[string]string{
+				SettingKeyImages2Enabled:         "true",
+				SettingKeyImages2PageTitle:       "ChatGPT Images 2 生图",
+				SettingKeyImages2BadgeText:       "HOT",
+				SettingKeyImages2TargetGroupName: "openai-chatgpt-images-2",
+				SettingKeyImages2ModelName:       "gpt-image-2",
+				SettingKeyImages2PricePerImage:   "0.5",
+				SettingKeyImages2MaxAttachments:  "5",
+				SettingKeyImages2RechargePath:    "/purchase",
+			},
+		}
 	svc := NewSettingService(repo, &config.Config{})
 
 	settings, err := svc.GetPublicSettings(context.Background())
@@ -174,6 +175,7 @@ func TestSettingService_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
 	require.Equal(t, "openai-chatgpt-images-2", settings.Images2TargetGroupName)
 	require.Equal(t, "gpt-image-2", settings.Images2ModelName)
 	require.Equal(t, 0.5, settings.Images2PricePerImage)
+	require.Equal(t, 5, settings.Images2MaxAttachments)
 	require.Equal(t, "/purchase", settings.Images2RechargePath)
 }
 

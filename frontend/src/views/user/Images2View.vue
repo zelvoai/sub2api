@@ -43,19 +43,72 @@
 
         <div class="images2-options-row" :aria-label="t('images2.sizeLabel')">
           <span class="images2-options-label">{{ t('images2.sizeLabel') }}</span>
-          <div class="images2-size-options">
-            <button
-              v-for="option in sizeOptions"
-              :key="option.value"
-              type="button"
-              class="images2-size-option"
-              :class="{ 'is-active': selectedSize === option.value }"
-              :disabled="isGenerating"
-              @click="selectedSize = option.value"
-            >
-              <Icon :name="option.icon" size="sm" :stroke-width="1.8" />
-              {{ option.label }}
+          <div v-if="!hasImage" class="images2-size-control-group">
+            <div class="images2-size-options images2-size-options-fixed">
+              <button
+                v-for="option in sizeOptions"
+                :key="option.value"
+                type="button"
+                class="images2-size-option"
+                :class="{ 'is-active': selectedSize === option.value && !followReferenceAspect }"
+                :disabled="isGenerating"
+                @click="selectedSize = option.value; followReferenceAspect = false"
+              >
+                <Icon :name="option.icon" size="sm" :stroke-width="1.8" />
+                {{ option.label }}
+              </button>
+            </div>
+            <div v-if="canFollowReferenceAspect" class="images2-size-options images2-size-options-reference">
+              <button
+                type="button"
+                class="images2-size-option is-reference-aspect"
+                :class="{ 'is-active': followReferenceAspect }"
+                :disabled="isGenerating"
+                @click="followReferenceAspect = true"
+              >
+                <Icon name="link" size="sm" :stroke-width="1.8" />
+                {{ t('images2.sizeFollowReference') }}
+              </button>
+            </div>
+          </div>
+          <div v-else class="images2-size-lock">
+            <p class="images2-size-lock-title">{{ t('images2.editPreserveAspectTitle') }}</p>
+            <p class="images2-size-lock-copy">{{ editSizeHintText }}</p>
+          </div>
+        </div>
+
+        <p v-if="!hasImage && canFollowReferenceAspect && followReferenceAspect" class="images2-size-follow-hint">
+          {{ referenceAspectHintText }}
+        </p>
+
+        <div class="images2-attachments-panel">
+          <div class="images2-attachments-header">
+            <div>
+              <p class="images2-options-label">{{ t('images2.attachmentsTitle') }}</p>
+              <p class="images2-attachments-copy">{{ t('images2.attachmentsHint') }}</p>
+            </div>
+            <button class="images2-size-option images2-upload-button" type="button" :disabled="isGenerating || attachments.length >= maxAttachments" @click="openAttachmentPicker">
+              <Icon name="plus" size="sm" :stroke-width="2" />
+              {{ t('images2.uploadAttachments') }}
             </button>
+            <input ref="fileInput" type="file" accept="image/*" multiple class="images2-file-input" @change="handleAttachmentChange" />
+          </div>
+
+          <p class="images2-attachments-meta">{{ t('images2.attachmentsMeta', { count: maxAttachments }) }}</p>
+          <p v-if="attachmentError" class="images2-attachments-error">{{ attachmentError }}</p>
+
+          <div v-if="hasImage || attachments.length" class="images2-attachments-list">
+            <div v-if="hasImage" class="images2-attachment-card is-current-result">
+              <img :src="displayImageUrl" :alt="t('images2.currentResultAlt')" class="images2-attachment-image" />
+              <div class="images2-attachment-badge">{{ t('images2.currentResultBadge') }}</div>
+            </div>
+
+            <div v-for="(attachment, index) in attachments" :key="`${index}-${attachment.dataUrl.slice(0, 24)}`" class="images2-attachment-card">
+              <img :src="attachment.dataUrl" :alt="t('images2.attachmentPreviewAlt', { index: index + 1 })" class="images2-attachment-image" />
+              <button type="button" class="images2-attachment-remove" :aria-label="t('images2.removeAttachment')" @click="removeAttachment(index)">
+                <Icon name="x" size="sm" :stroke-width="2.2" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -113,7 +166,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import { Icon } from '@/components/icons'
-import images2API, { type Images2Size } from '@/api/images2'
+import images2API, { type Images2Attachment, type Images2Size } from '@/api/images2'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 
@@ -127,7 +180,11 @@ const isGenerating = ref(false)
 const imageUrl = ref('')
 const revisedPrompt = ref('')
 const errorMessage = ref('')
+const attachmentError = ref('')
 const selectedSize = ref<Images2Size>('1024x1024')
+const followReferenceAspect = ref(false)
+const attachments = ref<Images2Attachment[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
 
 const sizeOptions: Array<{ value: Images2Size; label: string; icon: 'square' | 'rectangleHorizontal' | 'rectangleVertical' }> = [
   { value: '1024x1024', label: t('images2.sizeSquare'), icon: 'square' },
@@ -141,11 +198,50 @@ const pageTitle = computed(() => settings.value?.images2_page_title || 'ChatGPT 
 const noticeText = computed(() => settings.value?.images2_notice_text || t('images2.defaultNotice'))
 const rechargePath = computed(() => settings.value?.images2_recharge_path || '/purchase')
 const unitPrice = computed(() => settings.value?.images2_price_per_image ?? 0.5)
+const maxAttachments = computed(() => settings.value?.images2_max_attachments ?? 5)
 const canGenerate = computed(() => (user.value?.balance ?? 0) >= unitPrice.value)
 const balanceText = computed(() => (user.value?.balance ?? 0).toFixed(2))
 const priceText = computed(() => unitPrice.value.toFixed(2))
 const hasImage = computed(() => Boolean(imageUrl.value))
 const displayImageUrl = computed(() => imageUrl.value)
+const currentImageDimensions = computed(() => getImageDimensions(displayImageUrl.value))
+const firstReferenceDimensions = computed(() => {
+  const first = attachments.value[0]
+  return first ? getImageDimensions(first.dataUrl) : null
+})
+const firstReferenceAspectRatio = computed(() => {
+  const dimensions = firstReferenceDimensions.value
+  if (!dimensions) return ''
+  return trimTrailingZeros((dimensions.width / dimensions.height).toFixed(2))
+})
+const canFollowReferenceAspect = computed(() => attachments.value.length > 0 && Boolean(firstReferenceDimensions.value))
+const referenceAspectHintText = computed(() => {
+  const dimensions = firstReferenceDimensions.value
+  if (!dimensions || !firstReferenceAspectRatio.value) {
+    return t('images2.sizeFollowReferenceBodyUnknown')
+  }
+  return t('images2.sizeFollowReferenceBody', {
+    width: dimensions.width,
+    height: dimensions.height,
+    ratio: firstReferenceAspectRatio.value,
+  })
+})
+const currentImageAspectRatio = computed(() => {
+  const dimensions = currentImageDimensions.value
+  if (!dimensions) return ''
+  return trimTrailingZeros((dimensions.width / dimensions.height).toFixed(2))
+})
+const editSizeHintText = computed(() => {
+  const dimensions = currentImageDimensions.value
+  if (!dimensions || !currentImageAspectRatio.value) {
+    return t('images2.editPreserveAspectBodyUnknown')
+  }
+  return t('images2.editPreserveAspectBody', {
+    width: dimensions.width,
+    height: dimensions.height,
+    ratio: currentImageAspectRatio.value,
+  })
+})
 const primaryActionIcon = computed(() => {
   if (!canGenerate.value) return 'creditCard'
   return 'sparkles'
@@ -166,7 +262,7 @@ async function generateImage() {
   revisedPrompt.value = ''
   errorMessage.value = ''
   try {
-    const result = await images2API.generate(prompt.value.trim(), selectedSize.value)
+    const result = await images2API.generate(prompt.value.trim(), selectedSize.value, attachments.value, followReferenceAspect.value)
     const first = result.images?.[0]
     if (typeof first?.b64_json === 'string' && first.b64_json) {
       imageUrl.value = `data:image/png;base64,${first.b64_json}`
@@ -197,8 +293,9 @@ async function editCurrentImage() {
   isGenerating.value = true
   revisedPrompt.value = ''
   errorMessage.value = ''
+  const previousImageUrl = imageUrl.value
   try {
-    const result = await images2API.edit(prompt.value.trim(), imageUrl.value, selectedSize.value)
+    const result = await images2API.edit(prompt.value.trim(), imageUrl.value, selectedSize.value, attachments.value, true)
     const first = result.images?.[0]
     if (typeof first?.b64_json === 'string' && first.b64_json) {
       imageUrl.value = `data:image/png;base64,${first.b64_json}`
@@ -208,6 +305,9 @@ async function editCurrentImage() {
       imageUrl.value = ''
     }
     revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
+    if (previousImageUrl) {
+      attachments.value = retainEditSourceReference(previousImageUrl, attachments.value, maxAttachments.value)
+    }
     await authStore.refreshUser()
   } catch (error: any) {
     const message = error?.response?.data?.error?.message
@@ -239,6 +339,181 @@ function handleEditAction() {
 
 function goRecharge() {
   router.push(rechargePath.value)
+}
+
+function openAttachmentPicker() {
+  fileInput.value?.click()
+}
+
+async function handleAttachmentChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files ?? [])
+  input.value = ''
+  attachmentError.value = ''
+  if (files.length === 0) return
+
+  if (attachments.value.length >= maxAttachments.value) {
+    attachmentError.value = t('images2.attachmentsLimitError', { count: maxAttachments.value })
+    return
+  }
+
+  const availableSlots = maxAttachments.value - attachments.value.length
+  const nextFiles = files.slice(0, availableSlots)
+  if (files.length > availableSlots) {
+    attachmentError.value = t('images2.attachmentsLimitError', { count: maxAttachments.value })
+  }
+
+  for (const file of nextFiles) {
+    if (!file.type.startsWith('image/')) {
+      attachmentError.value = t('images2.attachmentsOnlyImages')
+      continue
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file)
+      attachments.value.push({ dataUrl })
+    } catch {
+      attachmentError.value = t('images2.attachmentsReadFailed')
+    }
+  }
+}
+
+function removeAttachment(index: number) {
+  attachments.value.splice(index, 1)
+  attachmentError.value = ''
+  if (!attachments.value.length) {
+    followReferenceAspect.value = false
+  }
+}
+
+function retainEditSourceReference(previousImageUrl: string, existingAttachments: Images2Attachment[], maxCount: number): Images2Attachment[] {
+  const deduped = [
+    { dataUrl: previousImageUrl },
+    ...existingAttachments,
+  ].filter((attachment, index, list) => list.findIndex((item) => item.dataUrl === attachment.dataUrl) === index)
+
+  return deduped.slice(0, Math.max(1, maxCount))
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+        return
+      }
+      reject(new Error('invalid file result'))
+    }
+    reader.onerror = () => reject(reader.error || new Error('failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function getImageDimensions(dataUrl: string): { width: number; height: number } | null {
+  const match = dataUrl.match(/^data:image\/(png|jpeg|jpg|gif|webp);base64,([A-Za-z0-9+/=]+)$/i)
+  if (!match) return null
+  try {
+    const binary = atob(match[2])
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
+    const png = readPngDimensions(bytes)
+    if (png) return png
+    const gif = readGifDimensions(bytes)
+    if (gif) return gif
+    const jpeg = readJpegDimensions(bytes)
+    if (jpeg) return jpeg
+    const webp = readWebpDimensions(bytes)
+    if (webp) return webp
+  } catch {
+    return null
+  }
+  return null
+}
+
+function readPngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 24) return null
+  const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10]
+  for (let i = 0; i < pngSignature.length; i += 1) {
+    if (bytes[i] !== pngSignature[i]) return null
+  }
+  return {
+    width: readUint32BE(bytes, 16),
+    height: readUint32BE(bytes, 20),
+  }
+}
+
+function readGifDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 10) return null
+  const header = String.fromCharCode(...bytes.slice(0, 6))
+  if (header !== 'GIF87a' && header !== 'GIF89a') return null
+  return {
+    width: bytes[6] | (bytes[7] << 8),
+    height: bytes[8] | (bytes[9] << 8),
+  }
+}
+
+function readJpegDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
+  let offset = 2
+  while (offset + 9 < bytes.length) {
+    if (bytes[offset] !== 0xff) {
+      offset += 1
+      continue
+    }
+    const marker = bytes[offset + 1]
+    if (marker === 0xd8 || marker === 0xd9) {
+      offset += 2
+      continue
+    }
+    if (offset + 4 >= bytes.length) return null
+    const segmentLength = (bytes[offset + 2] << 8) | bytes[offset + 3]
+    if (segmentLength < 2 || offset + 2 + segmentLength > bytes.length) return null
+    const isSOF = (marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)
+    if (isSOF && offset + 8 < bytes.length) {
+      return {
+        height: (bytes[offset + 5] << 8) | bytes[offset + 6],
+        width: (bytes[offset + 7] << 8) | bytes[offset + 8],
+      }
+    }
+    offset += 2 + segmentLength
+  }
+  return null
+}
+
+function readWebpDimensions(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes.length < 30) return null
+  const riff = String.fromCharCode(...bytes.slice(0, 4))
+  const webp = String.fromCharCode(...bytes.slice(8, 12))
+  if (riff !== 'RIFF' || webp !== 'WEBP') return null
+  const chunk = String.fromCharCode(...bytes.slice(12, 16))
+  if (chunk === 'VP8X' && bytes.length >= 30) {
+    const width = 1 + bytes[24] + (bytes[25] << 8) + (bytes[26] << 16)
+    const height = 1 + bytes[27] + (bytes[28] << 8) + (bytes[29] << 16)
+    return { width, height }
+  }
+  if (chunk === 'VP8 ' && bytes.length >= 30) {
+    return {
+      width: bytes[26] | (bytes[27] << 8),
+      height: bytes[28] | (bytes[29] << 8),
+    }
+  }
+  if (chunk === 'VP8L' && bytes.length >= 25) {
+    const b0 = bytes[21]
+    const b1 = bytes[22]
+    const b2 = bytes[23]
+    const b3 = bytes[24]
+    const width = 1 + (((b1 & 0x3f) << 8) | b0)
+    const height = 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6))
+    return { width, height }
+  }
+  return null
+}
+
+function readUint32BE(bytes: Uint8Array, offset: number): number {
+  return ((bytes[offset] << 24) >>> 0) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3]
+}
+
+function trimTrailingZeros(value: string): string {
+  return value.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1')
 }
 
 async function downloadImage() {
@@ -394,6 +669,53 @@ async function downloadImage() {
   gap: 0.5rem;
 }
 
+.images2-size-control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.images2-size-options-fixed {
+  flex-wrap: nowrap;
+}
+
+.images2-size-options-reference {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.images2-size-lock {
+  max-width: 420px;
+  margin-left: auto;
+  padding: 0.85rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  background: rgba(240, 249, 255, 0.82);
+  text-align: left;
+}
+
+.images2-size-lock-title {
+  margin: 0;
+  color: #0369a1;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.images2-size-lock-copy {
+  margin: 0.3rem 0 0;
+  color: #0369a1;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.images2-size-follow-hint {
+  margin: 0.75rem 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
 .images2-size-option {
   appearance: none;
   display: inline-flex;
@@ -420,6 +742,10 @@ async function downloadImage() {
 .images2-size-option:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+.images2-size-option.is-reference-aspect {
+  padding-inline: 1rem;
 }
 
 .images2-dev-toggle {
@@ -456,6 +782,102 @@ async function downloadImage() {
 
 .images2-result-hint strong {
   font-weight: 700;
+}
+
+.images2-attachments-panel {
+  margin-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  padding-top: 1rem;
+}
+
+.images2-attachments-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.images2-attachments-copy {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.images2-upload-button {
+  white-space: nowrap;
+}
+
+.images2-file-input {
+  display: none;
+}
+
+.images2-attachments-meta {
+  margin: 0.7rem 0 0;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.images2-attachments-error {
+  margin: 0.55rem 0 0;
+  color: #dc2626;
+  font-size: 0.84rem;
+}
+
+.images2-attachments-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.images2-attachment-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.72);
+  aspect-ratio: 1;
+}
+
+.images2-attachment-card.is-current-result {
+  border-color: rgba(14, 165, 233, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.18);
+}
+
+.images2-attachment-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.images2-attachment-badge {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.28rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(14, 165, 233, 0.9);
+  color: #f8fafc;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.images2-attachment-remove {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
+  cursor: pointer;
 }
 
 .images2-toolbar {
@@ -640,10 +1062,43 @@ async function downloadImage() {
   color: #020617;
 }
 
+.dark .images2-size-lock {
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(8, 47, 73, 0.46);
+}
+
+.dark .images2-size-lock-title,
+.dark .images2-size-lock-copy {
+  color: #bae6fd;
+}
+
+.dark .images2-size-follow-hint {
+  color: #94a3b8;
+}
+
 .dark .images2-result-hint {
   border-color: rgba(56, 189, 248, 0.22);
   background: rgba(8, 47, 73, 0.46);
   color: #bae6fd;
+}
+
+.dark .images2-attachments-panel {
+  border-top-color: rgba(148, 163, 184, 0.14);
+}
+
+.dark .images2-attachments-copy,
+.dark .images2-attachments-meta {
+  color: #94a3b8;
+}
+
+.dark .images2-attachment-card {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.dark .images2-attachment-card.is-current-result {
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.24);
 }
 
 .dark .images2-secondary {
@@ -699,9 +1154,21 @@ async function downloadImage() {
   }
 
   .images2-size-options {
-    display: flex;
-    justify-content: stretch;
+    width: 100%;
+  }
+
+  .images2-size-control-group {
+    align-items: stretch;
+  }
+
+  .images2-size-options-fixed {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.5rem;
+  }
+
+  .images2-size-options-reference {
+    display: block;
   }
 
   .images2-options-row {
@@ -709,8 +1176,22 @@ async function downloadImage() {
     flex-direction: column;
   }
 
+  .images2-attachments-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .images2-size-option {
-    flex: 1 1 0;
+    width: 100%;
+    min-width: 0;
+    border-radius: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .images2-size-option.is-reference-aspect {
+    justify-content: center;
   }
 
   .images2-toolbar {

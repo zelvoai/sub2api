@@ -130,6 +130,7 @@ func TestSettingHandler_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
 			service.SettingKeyImages2TargetGroupName: "openai-chatgpt-images-2",
 			service.SettingKeyImages2ModelName:       "gpt-image-2",
 			service.SettingKeyImages2PricePerImage:   "0.5",
+			service.SettingKeyImages2MaxAttachments:  "5",
 		},
 	}, &config.Config{}), "test-version")
 
@@ -149,6 +150,7 @@ func TestSettingHandler_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
 			Images2TargetGroupName string  `json:"images2_target_group_name"`
 			Images2ModelName       string  `json:"images2_model_name"`
 			Images2PricePerImage   float64 `json:"images2_price_per_image"`
+			Images2MaxAttachments  int     `json:"images2_max_attachments"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &resp))
@@ -158,6 +160,7 @@ func TestSettingHandler_GetPublicSettings_ExposesImages2Settings(t *testing.T) {
 	require.Equal(t, "openai-chatgpt-images-2", resp.Data.Images2TargetGroupName)
 	require.Equal(t, "gpt-image-2", resp.Data.Images2ModelName)
 	require.Equal(t, 0.5, resp.Data.Images2PricePerImage)
+	require.Equal(t, 5, resp.Data.Images2MaxAttachments)
 }
 
 func TestSettingHandler_GetPublicSettings_ExposesImages2PromoBannerSettings(t *testing.T) {

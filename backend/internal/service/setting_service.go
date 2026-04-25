@@ -515,6 +515,18 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		images2PricePerImage = v
 	}
 
+	images2MaxAttachments := 5
+	if v, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyImages2MaxAttachments])); err == nil {
+		switch {
+		case v < 1:
+			images2MaxAttachments = 1
+		case v > 10:
+			images2MaxAttachments = 10
+		default:
+			images2MaxAttachments = v
+		}
+	}
+
 	return &PublicSettings{
 		RegistrationEnabled:              settings[SettingKeyRegistrationEnabled] == "true",
 		EmailVerifyEnabled:               emailVerifyEnabled,
@@ -547,6 +559,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		Images2TargetGroupName:           firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2TargetGroupName]), "openai-chatgpt-images-2"),
 		Images2ModelName:                 firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2ModelName]), "gpt-image-2"),
 		Images2PricePerImage:             images2PricePerImage,
+		Images2MaxAttachments:            images2MaxAttachments,
 		Images2RechargePath:              firstNonEmpty(strings.TrimSpace(settings[SettingKeyImages2RechargePath]), "/purchase"),
 		Images2NoticeText:                strings.TrimSpace(settings[SettingKeyImages2NoticeText]),
 		Images2PromoBannerEnabled:        settings[SettingKeyImages2PromoBannerEnabled] == "true",
@@ -703,6 +716,7 @@ type PublicSettingsInjectionPayload struct {
 	Images2TargetGroupName           string          `json:"images2_target_group_name"`
 	Images2ModelName                 string          `json:"images2_model_name"`
 	Images2PricePerImage             float64         `json:"images2_price_per_image"`
+	Images2MaxAttachments            int             `json:"images2_max_attachments"`
 	Images2RechargePath              string          `json:"images2_recharge_path"`
 	Images2NoticeText                string          `json:"images2_notice_text"`
 	Images2PromoBannerEnabled        bool            `json:"images2_promo_banner_enabled"`
@@ -771,6 +785,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		Images2TargetGroupName:           settings.Images2TargetGroupName,
 		Images2ModelName:                 settings.Images2ModelName,
 		Images2PricePerImage:             settings.Images2PricePerImage,
+		Images2MaxAttachments:            settings.Images2MaxAttachments,
 		Images2RechargePath:              settings.Images2RechargePath,
 		Images2NoticeText:                settings.Images2NoticeText,
 		Images2PromoBannerEnabled:        settings.Images2PromoBannerEnabled,
@@ -1227,6 +1242,7 @@ func (s *SettingService) buildSystemSettingsUpdates(ctx context.Context, setting
 	updates[SettingKeyImages2TargetGroupName] = strings.TrimSpace(settings.Images2TargetGroupName)
 	updates[SettingKeyImages2ModelName] = strings.TrimSpace(settings.Images2ModelName)
 	updates[SettingKeyImages2PricePerImage] = strconv.FormatFloat(settings.Images2PricePerImage, 'f', -1, 64)
+	updates[SettingKeyImages2MaxAttachments] = strconv.Itoa(settings.Images2MaxAttachments)
 	updates[SettingKeyImages2RechargePath] = strings.TrimSpace(settings.Images2RechargePath)
 	updates[SettingKeyImages2NoticeText] = strings.TrimSpace(settings.Images2NoticeText)
 	updates[SettingKeyImages2PromoBannerEnabled] = strconv.FormatBool(settings.Images2PromoBannerEnabled)
@@ -1756,6 +1772,7 @@ func (s *SettingService) InitializeDefaultSettings(ctx context.Context) error {
 		SettingKeyImages2TargetGroupName:                   "openai-chatgpt-images-2",
 		SettingKeyImages2ModelName:                         "gpt-image-2",
 		SettingKeyImages2PricePerImage:                     "0.5",
+		SettingKeyImages2MaxAttachments:                    "5",
 		SettingKeyImages2RechargePath:                      "/purchase",
 		SettingKeyImages2NoticeText:                        "图片不会长期保存，请及时下载保存。",
 		SettingKeyImages2PromoBannerEnabled:                "false",
@@ -1917,6 +1934,18 @@ func (s *SettingService) parseSettings(settings map[string]string) *SystemSettin
 		result.Images2PricePerImage = v
 	} else {
 		result.Images2PricePerImage = 0.5
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(settings[SettingKeyImages2MaxAttachments])); err == nil {
+		switch {
+		case v < 1:
+			result.Images2MaxAttachments = 1
+		case v > 10:
+			result.Images2MaxAttachments = 10
+		default:
+			result.Images2MaxAttachments = v
+		}
+	} else {
+		result.Images2MaxAttachments = 5
 	}
 	result.TableDefaultPageSize, result.TablePageSizeOptions = parseTablePreferences(
 		settings[SettingKeyTableDefaultPageSize],

@@ -63,6 +63,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		Images2TargetGroupName:           settings.Images2TargetGroupName,
 		Images2ModelName:                 settings.Images2ModelName,
 		Images2PricePerImage:             settings.Images2PricePerImage,
+		Images2MaxAttachments:            settings.Images2MaxAttachments,
 		Images2RechargePath:              settings.Images2RechargePath,
 		Images2NoticeText:                settings.Images2NoticeText,
 		Images2PromoBannerEnabled:        settings.Images2PromoBannerEnabled,
