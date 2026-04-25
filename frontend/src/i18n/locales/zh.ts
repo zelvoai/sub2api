@@ -5920,6 +5920,7 @@ export default {
     regenerate: '重新生成',
     edit: '修改图片',
     editCurrent: '编辑当前图片',
+    newSession: '新会话',
     attachmentsTitle: '参考图',
     attachmentsHint: '上传参考图后，AI 会结合提示词生成新图；编辑当前图片时也会参考这些图片。',
     attachmentsMeta: '仅支持图片，最多 {count} 张。',

@@ -5759,6 +5759,7 @@ export default {
     regenerate: 'Regenerate',
     edit: 'Edit image',
     editCurrent: 'Edit current image',
+    newSession: 'New session',
     attachmentsTitle: 'Reference images',
     attachmentsHint: 'Upload reference images to guide new generations. When editing the current image, these references are used as extra guidance too.',
     attachmentsMeta: 'Images only, up to {count} files.',

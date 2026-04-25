@@ -121,6 +121,10 @@
             <Icon name="edit" size="sm" :stroke-width="2" />
             {{ t('images2.editCurrent') }}
           </button>
+          <button v-if="hasSessionContent" class="images2-link" type="button" :disabled="isGenerating" @click="startNewSession">
+            <Icon name="refresh" size="sm" :stroke-width="2" />
+            {{ t('images2.newSession') }}
+          </button>
         </div>
 
         <div v-if="hasImage" class="images2-result-hint">
@@ -161,7 +165,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -169,6 +173,18 @@ import { Icon } from '@/components/icons'
 import images2API, { type Images2Attachment, type Images2Size } from '@/api/images2'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
+
+const IMAGES2_SESSION_STORAGE_KEY = 'images2-session-v1'
+
+interface Images2SessionSnapshot {
+  userId: number | null
+  prompt: string
+  selectedSize: Images2Size
+  followReferenceAspect: boolean
+  attachments: Images2Attachment[]
+  imageUrl: string
+  revisedPrompt: string
+}
 
 const { t } = useI18n()
 const router = useRouter()
@@ -199,10 +215,12 @@ const noticeText = computed(() => settings.value?.images2_notice_text || t('imag
 const rechargePath = computed(() => settings.value?.images2_recharge_path || '/purchase')
 const unitPrice = computed(() => settings.value?.images2_price_per_image ?? 0.5)
 const maxAttachments = computed(() => settings.value?.images2_max_attachments ?? 5)
+const currentUserId = computed(() => user.value?.id ?? null)
 const canGenerate = computed(() => (user.value?.balance ?? 0) >= unitPrice.value)
 const balanceText = computed(() => (user.value?.balance ?? 0).toFixed(2))
 const priceText = computed(() => unitPrice.value.toFixed(2))
 const hasImage = computed(() => Boolean(imageUrl.value))
+const hasSessionContent = computed(() => Boolean(prompt.value.trim() || attachments.value.length || imageUrl.value))
 const displayImageUrl = computed(() => imageUrl.value)
 const currentImageDimensions = computed(() => getImageDimensions(displayImageUrl.value))
 const firstReferenceDimensions = computed(() => {
@@ -254,7 +272,16 @@ const primaryActionText = computed(() => {
 
 onMounted(async () => {
   await Promise.allSettled([appStore.fetchPublicSettings(), authStore.refreshUser()])
+  restoreSessionSnapshot()
 })
+
+watch(
+  [currentUserId, prompt, selectedSize, followReferenceAspect, attachments, imageUrl, revisedPrompt],
+  () => {
+    persistSessionSnapshot()
+  },
+  { deep: true }
+)
 
 async function generateImage() {
   if (!prompt.value.trim() || isGenerating.value || !canGenerate.value) return
@@ -341,6 +368,11 @@ function goRecharge() {
   router.push(rechargePath.value)
 }
 
+function startNewSession() {
+  clearComposerState()
+  clearSessionSnapshot()
+}
+
 function openAttachmentPicker() {
   fileInput.value?.click()
 }
@@ -392,6 +424,61 @@ function retainEditSourceReference(previousImageUrl: string, existingAttachments
   ].filter((attachment, index, list) => list.findIndex((item) => item.dataUrl === attachment.dataUrl) === index)
 
   return deduped.slice(0, Math.max(1, maxCount))
+}
+
+function clearComposerState() {
+  prompt.value = ''
+  selectedSize.value = '1024x1024'
+  followReferenceAspect.value = false
+  attachments.value = []
+  imageUrl.value = ''
+  revisedPrompt.value = ''
+  errorMessage.value = ''
+  attachmentError.value = ''
+}
+
+function persistSessionSnapshot() {
+  if (typeof window === 'undefined') return
+  const snapshot: Images2SessionSnapshot = {
+    userId: currentUserId.value,
+    prompt: prompt.value,
+    selectedSize: selectedSize.value,
+    followReferenceAspect: followReferenceAspect.value,
+    attachments: attachments.value,
+    imageUrl: imageUrl.value,
+    revisedPrompt: revisedPrompt.value,
+  }
+  if (!snapshot.prompt.trim() && !snapshot.attachments.length && !snapshot.imageUrl) {
+    clearSessionSnapshot()
+    return
+  }
+  window.localStorage.setItem(IMAGES2_SESSION_STORAGE_KEY, JSON.stringify(snapshot))
+}
+
+function restoreSessionSnapshot() {
+  if (typeof window === 'undefined') return
+  if (currentUserId.value == null) return
+  const raw = window.localStorage.getItem(IMAGES2_SESSION_STORAGE_KEY)
+  if (!raw) return
+  try {
+    const snapshot = JSON.parse(raw) as Partial<Images2SessionSnapshot>
+    if ((snapshot.userId ?? null) !== currentUserId.value) return
+    prompt.value = typeof snapshot.prompt === 'string' ? snapshot.prompt : ''
+    selectedSize.value = snapshot.selectedSize === '1536x1024' || snapshot.selectedSize === '1024x1536' ? snapshot.selectedSize : '1024x1024'
+    followReferenceAspect.value = snapshot.followReferenceAspect === true
+    attachments.value = Array.isArray(snapshot.attachments)
+      ? snapshot.attachments.filter((item): item is Images2Attachment => typeof item?.dataUrl === 'string' && item.dataUrl.startsWith('data:image/'))
+      : []
+    imageUrl.value = typeof snapshot.imageUrl === 'string' ? snapshot.imageUrl : ''
+    revisedPrompt.value = typeof snapshot.revisedPrompt === 'string' ? snapshot.revisedPrompt : ''
+  } catch {
+    clearSessionSnapshot()
+  }
+}
+
+function clearSessionSnapshot() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(IMAGES2_SESSION_STORAGE_KEY)
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -930,6 +1017,17 @@ async function downloadImage() {
   font-size: 0.88rem;
 }
 
+.images2-link {
+  padding: 0.78rem 0.4rem;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.images2-link:hover:not(:disabled) {
+  color: #0f172a;
+}
+
 .images2-stage {
   margin-top: 1.25rem;
   min-height: 560px;
@@ -1104,6 +1202,14 @@ async function downloadImage() {
 .dark .images2-secondary {
   background: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
+}
+
+.dark .images2-link {
+  color: #94a3b8;
+}
+
+.dark .images2-link:hover:not(:disabled) {
+  color: #f8fafc;
 }
 
 .dark .images2-primary {
