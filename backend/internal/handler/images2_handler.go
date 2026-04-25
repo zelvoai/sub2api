@@ -17,8 +17,8 @@ import (
 )
 
 type Images2Handler struct {
-	service            *service.Images2Service
-	openaiGateway      *OpenAIGatewayHandler
+	service       *service.Images2Service
+	openaiGateway *OpenAIGatewayHandler
 }
 
 func NewImages2Handler(images2Service *service.Images2Service, openaiGateway *OpenAIGatewayHandler) *Images2Handler {
@@ -48,12 +48,14 @@ func (h *Images2Handler) Generate(c *gin.Context) {
 		"model":           prepared.ModelName,
 		"prompt":          prepared.Prompt,
 		"response_format": "b64_json",
+		"size":            prepared.Size,
 	})
 	if prepared.ImageURL != "" {
 		body, err = json.Marshal(map[string]any{
 			"model":           prepared.ModelName,
 			"prompt":          prepared.Prompt,
 			"response_format": "b64_json",
+			"size":            prepared.Size,
 			"images": []map[string]string{{
 				"image_url": prepared.ImageURL,
 			}},
@@ -116,10 +118,10 @@ func (h *Images2Handler) Generate(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"images":         upstream.Data,
-		"applied_price":  prepared.Settings.Images2PricePerImage,
-		"balance":        prepared.User.Balance,
-		"client_ip":      ip.GetTrustedClientIP(c),
+		"images":        upstream.Data,
+		"applied_price": prepared.Settings.Images2PricePerImage,
+		"balance":       prepared.User.Balance,
+		"client_ip":     ip.GetTrustedClientIP(c),
 	})
 }
 
@@ -133,6 +135,6 @@ func newBufferedResponseRecorder() *bufferedResponseRecorder {
 	return &bufferedResponseRecorder{header: make(http.Header), statusCode: http.StatusOK}
 }
 
-func (r *bufferedResponseRecorder) Header() http.Header { return r.header }
+func (r *bufferedResponseRecorder) Header() http.Header            { return r.header }
 func (r *bufferedResponseRecorder) Write(data []byte) (int, error) { return r.body.Write(data) }
-func (r *bufferedResponseRecorder) WriteHeader(statusCode int) { r.statusCode = statusCode }
+func (r *bufferedResponseRecorder) WriteHeader(statusCode int)     { r.statusCode = statusCode }

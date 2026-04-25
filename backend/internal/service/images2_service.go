@@ -25,6 +25,7 @@ type Images2Service struct {
 type Images2GenerateRequest struct {
 	Prompt   string `json:"prompt"`
 	ImageURL string `json:"image_url,omitempty"`
+	Size     string `json:"size,omitempty"`
 }
 
 type Images2GenerateResponse struct {
@@ -41,6 +42,7 @@ type Images2PreparedRequest struct {
 	Prompt       string
 	ModelName    string
 	ImageURL     string
+	Size         string
 }
 
 func NewImages2Service(settings *SettingService, apiKeys *APIKeyService, users *UserService, groups *GroupService) *Images2Service {
@@ -55,6 +57,10 @@ func NewImages2Service(settings *SettingService, apiKeys *APIKeyService, users *
 func (s *Images2Service) Prepare(ctx context.Context, userID int64, req Images2GenerateRequest) (*Images2PreparedRequest, error) {
 	if strings.TrimSpace(req.Prompt) == "" {
 		return nil, infraerrors.BadRequest("IMAGES2_PROMPT_REQUIRED", "prompt is required")
+	}
+	size, err := normalizeImages2Size(req.Size)
+	if err != nil {
+		return nil, err
 	}
 
 	settings, err := s.settings.GetPublicSettings(ctx)
@@ -96,15 +102,29 @@ func (s *Images2Service) Prepare(ctx context.Context, userID int64, req Images2G
 	apiKey.Group = group
 
 	return &Images2PreparedRequest{
-		Settings:  settings,
-		User:      updatedUser,
-		Group:     group,
-		APIKey:    apiKey,
+		Settings:     settings,
+		User:         updatedUser,
+		Group:        group,
+		APIKey:       apiKey,
 		Subscription: subscription,
-		Prompt:    strings.TrimSpace(req.Prompt),
-		ModelName: settings.Images2ModelName,
-		ImageURL:  strings.TrimSpace(req.ImageURL),
+		Prompt:       strings.TrimSpace(req.Prompt),
+		ModelName:    settings.Images2ModelName,
+		ImageURL:     strings.TrimSpace(req.ImageURL),
+		Size:         size,
 	}, nil
+}
+
+func normalizeImages2Size(size string) (string, error) {
+	normalized := strings.TrimSpace(size)
+	if normalized == "" {
+		return "1024x1024", nil
+	}
+	switch normalized {
+	case "1024x1024", "1536x1024", "1024x1536":
+		return normalized, nil
+	default:
+		return "", infraerrors.BadRequest("IMAGES2_SIZE_INVALID", "size must be one of 1024x1024, 1536x1024, 1024x1536")
+	}
 }
 
 func (s *Images2Service) resolveGroupByName(ctx context.Context, name string) (*Group, error) {

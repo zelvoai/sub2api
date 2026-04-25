@@ -25,9 +25,30 @@
           rows="5"
         />
 
+        <div class="images2-options-row" :aria-label="t('images2.sizeLabel')">
+          <span class="images2-options-label">{{ t('images2.sizeLabel') }}</span>
+          <div class="images2-size-options">
+            <button
+              v-for="option in sizeOptions"
+              :key="option.value"
+              type="button"
+              class="images2-size-option"
+              :class="{ 'is-active': selectedSize === option.value }"
+              :disabled="isGenerating"
+              @click="selectedSize = option.value"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="imageUrl" class="images2-edit-hint">
+          {{ t('images2.editHint') }}
+        </div>
+
         <div class="images2-toolbar">
           <button class="images2-primary" :class="!canGenerate ? 'is-alert' : ''" :disabled="isGenerating || !prompt.trim() || !canGenerate" @click="generateImage">
-            {{ isGenerating ? t('images2.generating') : (imageUrl ? t('images2.edit') : t('images2.generate')) }}
+            {{ isGenerating ? t('images2.generating') : (imageUrl ? t('images2.editCurrent') : t('images2.generate')) }}
           </button>
           <button class="images2-secondary" :disabled="isGenerating" @click="resetCanvas">
             {{ t('images2.newImage') }}
@@ -46,9 +67,12 @@
 
         <template v-else-if="imageUrl">
           <img :src="imageUrl" :alt="revisedPrompt || prompt" class="images2-image" />
+          <div class="images2-result-hint">
+            {{ t('images2.resultEditHint') }}
+          </div>
           <div class="images2-stage-footer">
             <p class="images2-notice">{{ noticeText }}</p>
-            <button class="images2-secondary" @click="downloadImage">{{ t('images2.download') }}</button>
+            <button class="images2-secondary" @click="downloadImage">{{ t('images2.saveImage') }}</button>
           </div>
         </template>
 
@@ -65,7 +89,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
-import images2API from '@/api/images2'
+import images2API, { type Images2Size } from '@/api/images2'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
 
@@ -79,6 +103,13 @@ const isGenerating = ref(false)
 const imageUrl = ref('')
 const revisedPrompt = ref('')
 const errorMessage = ref('')
+const selectedSize = ref<Images2Size>('1024x1024')
+
+const sizeOptions: Array<{ value: Images2Size; label: string }> = [
+  { value: '1024x1024', label: t('images2.sizeSquare') },
+  { value: '1536x1024', label: t('images2.sizeLandscape') },
+  { value: '1024x1536', label: t('images2.sizePortrait') },
+]
 
 const settings = computed(() => appStore.cachedPublicSettings)
 const user = computed(() => authStore.user)
@@ -104,8 +135,8 @@ async function generateImage() {
   errorMessage.value = ''
   try {
     const result = imageUrl.value
-      ? await images2API.edit(prompt.value.trim(), imageUrl.value)
-      : await images2API.generate(prompt.value.trim())
+      ? await images2API.edit(prompt.value.trim(), imageUrl.value, selectedSize.value)
+      : await images2API.generate(prompt.value.trim(), selectedSize.value)
     const first = result.images?.[0]
     if (typeof first?.b64_json === 'string' && first.b64_json) {
       imageUrl.value = `data:image/png;base64,${first.b64_json}`
@@ -142,12 +173,32 @@ function goRecharge() {
   router.push(rechargePath.value)
 }
 
-function downloadImage() {
+async function downloadImage() {
   if (!imageUrl.value) return
+  const filename = `chatgpt-images-2-${new Date().toISOString().replace(/[:.]/g, '-')}.png`
   const link = document.createElement('a')
-  link.href = imageUrl.value
-  link.download = 'chatgpt-images-2.png'
-  link.click()
+  link.download = filename
+
+  if (imageUrl.value.startsWith('data:')) {
+    link.href = imageUrl.value
+    link.click()
+    return
+  }
+
+  try {
+    const response = await fetch(imageUrl.value, { mode: 'cors' })
+    if (!response.ok) throw new Error(`download failed: ${response.status}`)
+    const blob = await response.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    link.href = objectUrl
+    link.click()
+    URL.revokeObjectURL(objectUrl)
+  } catch {
+    link.href = imageUrl.value
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.click()
+  }
 }
 </script>
 
@@ -239,6 +290,68 @@ function downloadImage() {
 
 .images2-textarea::placeholder {
   color: rgba(100, 116, 139, 0.72);
+}
+
+.images2-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  padding-top: 1rem;
+}
+
+.images2-options-label {
+  color: #475569;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.images2-size-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.images2-size-option {
+  appearance: none;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #334155;
+  cursor: pointer;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.88rem;
+  transition: 180ms ease;
+}
+
+.images2-size-option:hover:not(:disabled),
+.images2-size-option.is-active {
+  border-color: rgba(15, 23, 42, 0.76);
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+.images2-size-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.images2-edit-hint,
+.images2-result-hint {
+  border-radius: 16px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(240, 249, 255, 0.86);
+  color: #0369a1;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.images2-edit-hint {
+  margin-top: 0.9rem;
+  padding: 0.75rem 0.9rem;
 }
 
 .images2-toolbar {
@@ -349,6 +462,11 @@ function downloadImage() {
   font-size: 0.92rem;
 }
 
+.images2-result-hint {
+  margin-top: 0.9rem;
+  padding: 0.8rem 0.95rem;
+}
+
 .dark .images2-title {
   color: #f8fafc;
 }
@@ -383,6 +501,34 @@ function downloadImage() {
 
 .dark .images2-textarea::placeholder {
   color: rgba(148, 163, 184, 0.7);
+}
+
+.dark .images2-options-row {
+  border-top-color: rgba(148, 163, 184, 0.14);
+}
+
+.dark .images2-options-label {
+  color: #cbd5e1;
+}
+
+.dark .images2-size-option {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.45);
+  color: #cbd5e1;
+}
+
+.dark .images2-size-option:hover:not(:disabled),
+.dark .images2-size-option.is-active {
+  border-color: rgba(248, 250, 252, 0.72);
+  background: #f8fafc;
+  color: #020617;
+}
+
+.dark .images2-edit-hint,
+.dark .images2-result-hint {
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(8, 47, 73, 0.46);
+  color: #bae6fd;
 }
 
 .dark .images2-secondary {
@@ -438,6 +584,16 @@ function downloadImage() {
   .images2-balance-pill {
     justify-content: center;
     align-self: center;
+  }
+
+  .images2-options-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .images2-size-options {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 
   .images2-toolbar {
