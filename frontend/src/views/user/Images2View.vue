@@ -59,15 +59,24 @@
           </div>
         </div>
 
-        <div class="images2-toolbar">
+        <div class="images2-toolbar" :class="{ 'is-single': !hasImage }">
           <button class="images2-primary" :class="!canGenerate ? 'is-alert' : ''" :disabled="isGenerating || (canGenerate && !prompt.trim())" @click="handlePrimaryAction">
             <Icon :name="primaryActionIcon" size="sm" :stroke-width="2" />
             {{ primaryActionText }}
           </button>
           <button v-if="hasImage" class="images2-secondary" :disabled="isGenerating || !prompt.trim()" @click="handleEditAction">
-            <Icon name="plus" size="sm" :stroke-width="2" />
+            <Icon name="edit" size="sm" :stroke-width="2" />
             {{ t('images2.editCurrent') }}
           </button>
+        </div>
+
+        <div v-if="hasImage" class="images2-result-hint">
+          <p>
+            <strong>{{ t('images2.resultActionHintRegenerateLabel') }}</strong>{{ t('images2.resultActionHintRegenerateBody') }}
+          </p>
+          <p>
+            <strong>{{ t('images2.resultActionHintEditLabel') }}</strong>{{ t('images2.resultActionHintEditBody') }}
+          </p>
         </div>
       </section>
 
@@ -144,7 +153,7 @@ const primaryActionIcon = computed(() => {
 const primaryActionText = computed(() => {
   if (isGenerating.value) return t('images2.generating')
   if (!canGenerate.value) return t('images2.rechargePrimary')
-  return t('images2.generate')
+  return hasImage.value ? t('images2.regenerate') : t('images2.generate')
 })
 
 onMounted(async () => {
@@ -167,9 +176,6 @@ async function generateImage() {
       imageUrl.value = ''
     }
     revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
-    if (imageUrl.value) {
-      appStore.showSuccess(t('images2.generateSuccessToast'), 8000)
-    }
     await authStore.refreshUser()
   } catch (error: any) {
     const message = error?.response?.data?.error?.message
@@ -202,9 +208,6 @@ async function editCurrentImage() {
       imageUrl.value = ''
     }
     revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
-    if (imageUrl.value) {
-      appStore.showSuccess(t('images2.generateSuccessToast'), 8000)
-    }
     await authStore.refreshUser()
   } catch (error: any) {
     const message = error?.response?.data?.error?.message
@@ -433,12 +436,26 @@ async function downloadImage() {
 }
 
 .images2-result-hint {
+  margin: 0.85rem 0 0;
+  padding: 0.85rem 1rem;
   border-radius: 16px;
   border: 1px solid rgba(14, 165, 233, 0.2);
   background: rgba(240, 249, 255, 0.86);
   color: #0369a1;
   font-size: 0.9rem;
   line-height: 1.55;
+}
+
+.images2-result-hint p {
+  margin: 0;
+}
+
+.images2-result-hint p + p {
+  margin-top: 0.35rem;
+}
+
+.images2-result-hint strong {
+  font-weight: 700;
 }
 
 .images2-toolbar {
@@ -698,8 +715,12 @@ async function downloadImage() {
 
   .images2-toolbar {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     align-items: center;
+  }
+
+  .images2-toolbar:not(.is-single) {
+    grid-template-columns: 1fr 1fr;
   }
 
   .images2-primary,
