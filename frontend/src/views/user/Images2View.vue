@@ -43,7 +43,7 @@
 
         <div class="images2-options-row" :aria-label="t('images2.sizeLabel')">
           <span class="images2-options-label">{{ t('images2.sizeLabel') }}</span>
-          <div v-if="!hasImage" class="images2-size-control-group">
+          <div class="images2-size-control-group">
             <div class="images2-size-options images2-size-options-fixed">
               <button
                 v-for="option in sizeOptions"
@@ -71,13 +71,9 @@
               </button>
             </div>
           </div>
-          <div v-else class="images2-size-lock">
-            <p class="images2-size-lock-title">{{ t('images2.editPreserveAspectTitle') }}</p>
-            <p class="images2-size-lock-copy">{{ editSizeHintText }}</p>
-          </div>
         </div>
 
-        <p v-if="!hasImage && canFollowReferenceAspect && followReferenceAspect" class="images2-size-follow-hint">
+        <p v-if="canFollowReferenceAspect && followReferenceAspect" class="images2-size-follow-hint">
           {{ referenceAspectHintText }}
         </p>
 
@@ -97,14 +93,10 @@
           <p class="images2-attachments-meta">{{ t('images2.attachmentsMeta', { count: maxAttachments }) }}</p>
           <p v-if="attachmentError" class="images2-attachments-error">{{ attachmentError }}</p>
 
-          <div v-if="hasImage || attachments.length" class="images2-attachments-list">
-            <div v-if="hasImage" class="images2-attachment-card is-current-result">
-              <img :src="displayImageUrl" :alt="t('images2.currentResultAlt')" class="images2-attachment-image" />
-              <div class="images2-attachment-badge">{{ t('images2.currentResultBadge') }}</div>
-            </div>
-
+          <div v-if="attachments.length" class="images2-attachments-list">
             <div v-for="(attachment, index) in attachments" :key="`${index}-${attachment.dataUrl.slice(0, 24)}`" class="images2-attachment-card">
               <img :src="attachment.dataUrl" :alt="t('images2.attachmentPreviewAlt', { index: index + 1 })" class="images2-attachment-image" />
+              <div v-if="attachment.source === 'current-result'" class="images2-attachment-badge">{{ t('images2.currentResultBadge') }}</div>
               <button type="button" class="images2-attachment-remove" :aria-label="t('images2.removeAttachment')" @click="removeAttachment(index)">
                 <Icon name="x" size="sm" :stroke-width="2.2" />
               </button>
@@ -117,7 +109,7 @@
             <Icon :name="primaryActionIcon" size="sm" :stroke-width="2" />
             {{ primaryActionText }}
           </button>
-          <button v-if="hasImage" class="images2-secondary" :disabled="isGenerating || !prompt.trim()" @click="handleEditAction">
+          <button v-if="hasImage" class="images2-secondary" :disabled="isGenerating" @click="handleEditAction">
             <Icon name="edit" size="sm" :stroke-width="2" />
             {{ t('images2.editCurrent') }}
           </button>
@@ -183,6 +175,7 @@ interface Images2SessionSnapshot {
   followReferenceAspect: boolean
   attachments: Images2Attachment[]
   imageUrl: string
+  currentResultId: string
   revisedPrompt: string
 }
 
@@ -194,6 +187,7 @@ const authStore = useAuthStore()
 const prompt = ref('')
 const isGenerating = ref(false)
 const imageUrl = ref('')
+const currentResultId = ref('')
 const revisedPrompt = ref('')
 const errorMessage = ref('')
 const attachmentError = ref('')
@@ -222,7 +216,6 @@ const priceText = computed(() => unitPrice.value.toFixed(2))
 const hasImage = computed(() => Boolean(imageUrl.value))
 const hasSessionContent = computed(() => Boolean(prompt.value.trim() || attachments.value.length || imageUrl.value))
 const displayImageUrl = computed(() => imageUrl.value)
-const currentImageDimensions = computed(() => getImageDimensions(displayImageUrl.value))
 const firstReferenceDimensions = computed(() => {
   const first = attachments.value[0]
   return first ? getImageDimensions(first.dataUrl) : null
@@ -244,22 +237,6 @@ const referenceAspectHintText = computed(() => {
     ratio: firstReferenceAspectRatio.value,
   })
 })
-const currentImageAspectRatio = computed(() => {
-  const dimensions = currentImageDimensions.value
-  if (!dimensions) return ''
-  return trimTrailingZeros((dimensions.width / dimensions.height).toFixed(2))
-})
-const editSizeHintText = computed(() => {
-  const dimensions = currentImageDimensions.value
-  if (!dimensions || !currentImageAspectRatio.value) {
-    return t('images2.editPreserveAspectBodyUnknown')
-  }
-  return t('images2.editPreserveAspectBody', {
-    width: dimensions.width,
-    height: dimensions.height,
-    ratio: currentImageAspectRatio.value,
-  })
-})
 const primaryActionIcon = computed(() => {
   if (!canGenerate.value) return 'creditCard'
   return 'sparkles'
@@ -267,7 +244,7 @@ const primaryActionIcon = computed(() => {
 const primaryActionText = computed(() => {
   if (isGenerating.value) return t('images2.generating')
   if (!canGenerate.value) return t('images2.rechargePrimary')
-  return hasImage.value ? t('images2.regenerate') : t('images2.generate')
+  return t('images2.generate')
 })
 
 onMounted(async () => {
@@ -276,7 +253,7 @@ onMounted(async () => {
 })
 
 watch(
-  [currentUserId, prompt, selectedSize, followReferenceAspect, attachments, imageUrl, revisedPrompt],
+  [currentUserId, prompt, selectedSize, followReferenceAspect, attachments, imageUrl, currentResultId, revisedPrompt],
   () => {
     persistSessionSnapshot()
   },
@@ -298,6 +275,8 @@ async function generateImage() {
     } else {
       imageUrl.value = ''
     }
+    demoteCurrentResultReferences()
+    currentResultId.value = imageUrl.value ? createResultId() : ''
     revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
     await authStore.refreshUser()
   } catch (error: any) {
@@ -315,40 +294,32 @@ async function generateImage() {
   }
 }
 
-async function editCurrentImage() {
-  if (!prompt.value.trim() || isGenerating.value || !canGenerate.value || !imageUrl.value) return
-  isGenerating.value = true
-  revisedPrompt.value = ''
-  errorMessage.value = ''
-  const previousImageUrl = imageUrl.value
-  try {
-    const result = await images2API.edit(prompt.value.trim(), imageUrl.value, selectedSize.value, attachments.value, true)
-    const first = result.images?.[0]
-    if (typeof first?.b64_json === 'string' && first.b64_json) {
-      imageUrl.value = `data:image/png;base64,${first.b64_json}`
-    } else if (typeof first?.url === 'string' && first.url) {
-      imageUrl.value = first.url
-    } else {
-      imageUrl.value = ''
-    }
-    revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
-    if (previousImageUrl) {
-      attachments.value = retainEditSourceReference(previousImageUrl, attachments.value, maxAttachments.value)
-    }
-    await authStore.refreshUser()
-  } catch (error: any) {
-    const message = error?.response?.data?.error?.message
-      || error?.response?.data?.message
-      || error?.message
-      || t('images2.generateFailed')
-    const normalized = message === t('images2.generateFailed')
-      ? t('common.error')
-      : message
-    errorMessage.value = normalized
-    appStore.showError(normalized)
-  } finally {
-    isGenerating.value = false
+function addCurrentImageToReferences() {
+  if (!imageUrl.value || isGenerating.value) return
+  attachmentError.value = ''
+
+  const currentSource: Images2Attachment = {
+    dataUrl: imageUrl.value,
+    source: 'current-result',
+    resultId: currentResultId.value || createResultId(),
   }
+  if (!currentResultId.value) {
+    currentResultId.value = currentSource.resultId || ''
+  }
+
+  const otherAttachments = attachments.value.filter((attachment) => {
+    if (attachment.source === 'current-result') return false
+    if (currentSource.resultId && attachment.resultId === currentSource.resultId) return false
+    return attachment.dataUrl !== currentSource.dataUrl
+  })
+
+  if (otherAttachments.length >= maxAttachments.value) {
+    attachmentError.value = t('images2.attachmentsCurrentResultLimitError', { count: maxAttachments.value })
+    return
+  }
+
+  attachments.value = [currentSource, ...otherAttachments]
+  followReferenceAspect.value = true
 }
 
 function handlePrimaryAction() {
@@ -361,7 +332,7 @@ function handlePrimaryAction() {
 }
 
 function handleEditAction() {
-  void editCurrentImage()
+  addCurrentImageToReferences()
 }
 
 function goRecharge() {
@@ -402,7 +373,7 @@ async function handleAttachmentChange(event: Event) {
     }
     try {
       const dataUrl = await readFileAsDataUrl(file)
-      attachments.value.push({ dataUrl })
+      attachments.value.push({ dataUrl, source: 'upload' })
     } catch {
       attachmentError.value = t('images2.attachmentsReadFailed')
     }
@@ -417,13 +388,14 @@ function removeAttachment(index: number) {
   }
 }
 
-function retainEditSourceReference(previousImageUrl: string, existingAttachments: Images2Attachment[], maxCount: number): Images2Attachment[] {
-  const deduped = [
-    { dataUrl: previousImageUrl },
-    ...existingAttachments,
-  ].filter((attachment, index, list) => list.findIndex((item) => item.dataUrl === attachment.dataUrl) === index)
-
-  return deduped.slice(0, Math.max(1, maxCount))
+function demoteCurrentResultReferences() {
+  attachments.value = attachments.value.map((attachment) => {
+    if (attachment.source !== 'current-result') return attachment
+    return {
+      dataUrl: attachment.dataUrl,
+      source: 'upload',
+    }
+  })
 }
 
 function clearComposerState() {
@@ -432,6 +404,7 @@ function clearComposerState() {
   followReferenceAspect.value = false
   attachments.value = []
   imageUrl.value = ''
+  currentResultId.value = ''
   revisedPrompt.value = ''
   errorMessage.value = ''
   attachmentError.value = ''
@@ -446,6 +419,7 @@ function persistSessionSnapshot() {
     followReferenceAspect: followReferenceAspect.value,
     attachments: attachments.value,
     imageUrl: imageUrl.value,
+    currentResultId: currentResultId.value,
     revisedPrompt: revisedPrompt.value,
   }
   if (!snapshot.prompt.trim() && !snapshot.attachments.length && !snapshot.imageUrl) {
@@ -468,12 +442,25 @@ function restoreSessionSnapshot() {
     followReferenceAspect.value = snapshot.followReferenceAspect === true
     attachments.value = Array.isArray(snapshot.attachments)
       ? snapshot.attachments.filter((item): item is Images2Attachment => typeof item?.dataUrl === 'string' && item.dataUrl.startsWith('data:image/'))
+        .map((item) => ({
+          dataUrl: item.dataUrl,
+          source: item.source === 'current-result' ? 'current-result' : 'upload',
+          resultId: typeof item.resultId === 'string' ? item.resultId : undefined,
+        }))
       : []
     imageUrl.value = typeof snapshot.imageUrl === 'string' ? snapshot.imageUrl : ''
+    currentResultId.value = typeof snapshot.currentResultId === 'string' ? snapshot.currentResultId : ''
     revisedPrompt.value = typeof snapshot.revisedPrompt === 'string' ? snapshot.revisedPrompt : ''
   } catch {
     clearSessionSnapshot()
   }
+}
+
+function createResultId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `result-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
 function clearSessionSnapshot() {

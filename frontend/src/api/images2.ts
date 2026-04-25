@@ -13,6 +13,8 @@ export type Images2Size = '1024x1024' | '1536x1024' | '1024x1536'
 
 export interface Images2Attachment {
   dataUrl: string
+  source?: 'upload' | 'current-result'
+  resultId?: string
 }
 
 export async function generate(prompt: string, size: Images2Size, attachments: Images2Attachment[] = [], preserveInputAspect = false): Promise<Images2GenerateResponse> {
