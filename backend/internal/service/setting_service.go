@@ -705,6 +705,10 @@ type PublicSettingsInjectionPayload struct {
 	Images2PricePerImage             float64         `json:"images2_price_per_image"`
 	Images2RechargePath              string          `json:"images2_recharge_path"`
 	Images2NoticeText                string          `json:"images2_notice_text"`
+	Images2PromoBannerEnabled        bool            `json:"images2_promo_banner_enabled"`
+	Images2PromoBannerTitle          string          `json:"images2_promo_banner_title"`
+	Images2PromoBannerText           string          `json:"images2_promo_banner_text"`
+	Images2PromoBannerCTA            string          `json:"images2_promo_banner_cta"`
 	LinuxDoOAuthEnabled              bool            `json:"linuxdo_oauth_enabled"`
 	WeChatOAuthEnabled               bool            `json:"wechat_oauth_enabled"`
 	WeChatOAuthOpenEnabled           bool            `json:"wechat_oauth_open_enabled"`
@@ -769,6 +773,10 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		Images2PricePerImage:             settings.Images2PricePerImage,
 		Images2RechargePath:              settings.Images2RechargePath,
 		Images2NoticeText:                settings.Images2NoticeText,
+		Images2PromoBannerEnabled:        settings.Images2PromoBannerEnabled,
+		Images2PromoBannerTitle:          settings.Images2PromoBannerTitle,
+		Images2PromoBannerText:           settings.Images2PromoBannerText,
+		Images2PromoBannerCTA:            settings.Images2PromoBannerCTA,
 		LinuxDoOAuthEnabled:              settings.LinuxDoOAuthEnabled,
 		WeChatOAuthEnabled:               settings.WeChatOAuthEnabled,
 		WeChatOAuthOpenEnabled:           settings.WeChatOAuthOpenEnabled,
