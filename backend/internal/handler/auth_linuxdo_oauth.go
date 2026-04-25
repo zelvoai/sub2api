@@ -302,7 +302,7 @@ func (h *AuthHandler) LinuxDoOAuthCallback(c *gin.Context) {
 			Intent:                 oauthIntentLogin,
 			Identity:               identityKey,
 			TargetUserID:           &existingIdentityUser.ID,
-			ResolvedEmail:          existingIdentityUser.Email,
+			ResolvedEmail:          derefStr(existingIdentityUser.Email),
 			RedirectTo:             redirectTo,
 			BrowserSessionKey:      browserSessionKey,
 			UpstreamIdentityClaims: upstreamClaims,
@@ -406,11 +406,11 @@ func (h *AuthHandler) createLinuxDoOAuthChoicePendingSession(
 	}
 	resolvedChoiceEmail := suggestionEmail
 	if compatEmailUser != nil {
-		completionResponse["email"] = strings.TrimSpace(compatEmailUser.Email)
-		completionResponse["existing_account_email"] = strings.TrimSpace(compatEmailUser.Email)
+		completionResponse["email"] = strings.TrimSpace(derefStr(compatEmailUser.Email))
+		completionResponse["existing_account_email"] = strings.TrimSpace(derefStr(compatEmailUser.Email))
 		completionResponse["existing_account_bindable"] = true
 		completionResponse["choice_reason"] = "compat_email_match"
-		resolvedChoiceEmail = strings.TrimSpace(compatEmailUser.Email)
+		resolvedChoiceEmail = strings.TrimSpace(derefStr(compatEmailUser.Email))
 	}
 	if forceEmailOnSignup && compatEmailUser == nil {
 		completionResponse["choice_reason"] = "force_email_on_signup"
@@ -1160,4 +1160,11 @@ func parseOAuthBindUserCookieValue(value string, secret string) (int64, error) {
 		return 0, errors.New("invalid oauth bind cookie user")
 	}
 	return userID, nil
+}
+
+func derefStr(v *string) string {
+	if v == nil {
+		return ""
+	}
+	return *v
 }

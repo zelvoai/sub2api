@@ -109,14 +109,20 @@ export interface AdminUser extends User {
   current_concurrency?: number
 }
 
+export type AuthAccountType = 'username' | 'email'
+
 export interface LoginRequest {
-  email: string
+  account_type: AuthAccountType
+  email?: string
+  username?: string
   password: string
   turnstile_token?: string
 }
 
 export interface RegisterRequest {
-  email: string
+  account_type: AuthAccountType
+  email?: string
+  username?: string
   password: string
   verify_code?: string
   turnstile_token?: string

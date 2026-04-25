@@ -279,7 +279,7 @@ func (h *AuthHandler) WeChatOAuthCallback(c *gin.Context) {
 			redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
 			return
 		}
-		if err := h.createWeChatPendingSession(c, normalizedIntent, providerSubject, existingIdentityUser.Email, redirectTo, browserSessionKey, upstreamClaims, nil, nil, &existingIdentityUser.ID); err != nil {
+		if err := h.createWeChatPendingSession(c, normalizedIntent, providerSubject, derefStr(existingIdentityUser.Email), redirectTo, browserSessionKey, upstreamClaims, nil, nil, &existingIdentityUser.ID); err != nil {
 			redirectOAuthError(c, frontendCallback, "session_error", "failed to continue oauth login", "")
 			return
 		}
@@ -660,8 +660,8 @@ func (h *AuthHandler) createWeChatChoicePendingSession(
 		completionResponse["compat_email"] = strings.TrimSpace(compatEmail)
 	}
 	if compatEmailUser != nil {
-		completionResponse["email"] = strings.TrimSpace(compatEmailUser.Email)
-		completionResponse["existing_account_email"] = strings.TrimSpace(compatEmailUser.Email)
+		completionResponse["email"] = strings.TrimSpace(derefStr(compatEmailUser.Email))
+		completionResponse["existing_account_email"] = strings.TrimSpace(derefStr(compatEmailUser.Email))
 		completionResponse["existing_account_bindable"] = true
 		completionResponse["choice_reason"] = "compat_email_match"
 	}
@@ -671,7 +671,7 @@ func (h *AuthHandler) createWeChatChoicePendingSession(
 
 	resolvedChoiceEmail := suggestionEmail
 	if compatEmailUser != nil {
-		resolvedChoiceEmail = strings.TrimSpace(compatEmailUser.Email)
+		resolvedChoiceEmail = strings.TrimSpace(derefStr(compatEmailUser.Email))
 	}
 
 	return h.createOAuthPendingSession(c, oauthPendingSessionPayload{
@@ -705,7 +705,7 @@ func (h *AuthHandler) createWeChatBindPendingSession(
 		c,
 		wechatOAuthIntentBind,
 		providerSubject,
-		currentUser.Email,
+		derefStr(currentUser.Email),
 		redirectTo,
 		browserSessionKey,
 		upstreamClaims,

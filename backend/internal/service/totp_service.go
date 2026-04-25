@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/pquerna/otp/totp"
@@ -492,6 +493,17 @@ func MaskEmail(email string) string {
 	}
 
 	return localPart[:1] + "***" + localPart[len(localPart)-1:] + domain
+}
+
+func MaskLoginIdentity(identity string) string {
+    trimmed := strings.TrimSpace(identity)
+    if trimmed == "" {
+        return "***"
+    }
+    if strings.Contains(trimmed, "@") {
+        return MaskEmail(trimmed)
+    }
+    return trimmed
 }
 
 // generateRandomToken generates a random hex-encoded token

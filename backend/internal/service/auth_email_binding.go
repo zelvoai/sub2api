@@ -214,7 +214,7 @@ func (s *AuthService) updateBoundEmailIdentityWithClient(
 	if err != nil {
 		return ErrServiceUnavailable
 	}
-	currentUser.Email = updatedUser.Email
+	currentUser.Email = derefStr(updatedUser.Email)
 	currentUser.PasswordHash = updatedUser.PasswordHash
 	currentUser.Balance = updatedUser.Balance
 	currentUser.Concurrency = updatedUser.Concurrency

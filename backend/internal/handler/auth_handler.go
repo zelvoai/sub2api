@@ -42,12 +42,14 @@ func NewAuthHandler(cfg *config.Config, authService *service.AuthService, userSe
 
 // RegisterRequest represents the registration request payload
 type RegisterRequest struct {
-	Email          string `json:"email" binding:"required,email"`
+	AccountType    string `json:"account_type"`                               // "email" or "username"
+	Email          string `json:"email"`                                       // required when account_type=email
+	Username       string `json:"username"`                                    // required when account_type=username
 	Password       string `json:"password" binding:"required,min=6"`
 	VerifyCode     string `json:"verify_code"`
 	TurnstileToken string `json:"turnstile_token"`
-	PromoCode      string `json:"promo_code"`      // 注册优惠码
-	InvitationCode string `json:"invitation_code"` // 邀请码
+	PromoCode      string `json:"promo_code"`
+	InvitationCode string `json:"invitation_code"`
 }
 
 // SendVerifyCodeRequest 发送验证码请求
@@ -64,7 +66,9 @@ type SendVerifyCodeResponse struct {
 
 // LoginRequest represents the login request payload
 type LoginRequest struct {
-	Email          string `json:"email" binding:"required,email"`
+	AccountType    string `json:"account_type"`                     // "email" or "username"
+	Email          string `json:"email"`                             // required when account_type=email
+	Username       string `json:"username"`                          // required when account_type=username
 	Password       string `json:"password" binding:"required"`
 	TurnstileToken string `json:"turnstile_token"`
 }
@@ -158,13 +162,42 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	accountType := strings.TrimSpace(strings.ToLower(req.AccountType))
+	if accountType == "" {
+		accountType = "username"
+	}
+	if accountType != "email" && accountType != "username" {
+		response.BadRequest(c, "Invalid account_type: must be 'email' or 'username'")
+		return
+	}
+
+	if accountType == "email" {
+		if strings.TrimSpace(req.Email) == "" {
+			response.BadRequest(c, "Email is required for email registration")
+			return
+		}
+	} else {
+		if strings.TrimSpace(req.Username) == "" {
+			response.BadRequest(c, "Username is required for username registration")
+			return
+		}
+	}
+
 	// Turnstile 验证（邮箱验证码注册场景避免重复校验一次性 token）
 	if err := h.authService.VerifyTurnstileForRegister(c.Request.Context(), req.TurnstileToken, ip.GetClientIP(c), req.VerifyCode); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
-	_, user, err := h.authService.RegisterWithVerification(c.Request.Context(), req.Email, req.Password, req.VerifyCode, req.PromoCode, req.InvitationCode)
+	var user *service.User
+	var err error
+
+	if accountType == "email" {
+		_, user, err = h.authService.RegisterWithVerification(c.Request.Context(), req.Email, req.Password, req.VerifyCode, req.PromoCode, req.InvitationCode)
+	} else {
+		_, user, err = h.authService.RegisterWithUsername(c.Request.Context(), req.Username, req.Password, req.PromoCode, req.InvitationCode)
+	}
+
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -209,18 +242,43 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	accountType := strings.TrimSpace(strings.ToLower(req.AccountType))
+	if accountType == "" {
+		accountType = "username"
+	}
+	if accountType != "email" && accountType != "username" {
+		response.BadRequest(c, "Invalid account_type: must be 'email' or 'username'")
+		return
+	}
+
+	if accountType == "email" && strings.TrimSpace(req.Email) == "" {
+		response.BadRequest(c, "Email is required for email login")
+		return
+	}
+	if accountType == "username" && strings.TrimSpace(req.Username) == "" {
+		response.BadRequest(c, "Username is required for username login")
+		return
+	}
+
 	// Turnstile 验证
 	if err := h.authService.VerifyTurnstile(c.Request.Context(), req.TurnstileToken, ip.GetClientIP(c)); err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
 
-	token, user, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
+	var user *service.User
+	var err error
+
+	if accountType == "email" {
+		_, user, err = h.authService.Login(c.Request.Context(), req.Email, req.Password)
+	} else {
+		_, user, err = h.authService.LoginByUsername(c.Request.Context(), req.Username, req.Password)
+	}
+
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
-	_ = token // token 由 authService.Login 返回但此处由 respondWithTokenPair 重新生成
 
 	if err := h.ensureBackendModeAllowsUser(c.Request.Context(), user); err != nil {
 		response.ErrorFrom(c, err)
@@ -236,10 +294,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			return
 		}
 
+		displayName := user.Email
+		if displayName == "" {
+			displayName = user.Username
+		}
+
 		response.Success(c, TotpLoginResponse{
 			Requires2FA:     true,
 			TempToken:       tempToken,
-			UserEmailMasked: service.MaskEmail(user.Email),
+			UserEmailMasked: service.MaskLoginIdentity(displayName),
 		})
 		return
 	}

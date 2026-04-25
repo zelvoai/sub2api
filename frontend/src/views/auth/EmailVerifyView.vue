@@ -432,7 +432,8 @@ async function sendCode(): Promise<void> {
     resendTurnstileToken.value = ''
   } catch (error: unknown) {
     errorMessage.value = buildAuthErrorMessage(error, {
-      fallback: t('auth.sendCodeFailed')
+      fallback: t('auth.sendCodeFailed'),
+      t,
     })
 
     appStore.showError(errorMessage.value)
@@ -519,6 +520,7 @@ async function handleVerify(): Promise<void> {
     } else {
       // Register with verification code
       await authStore.register({
+        account_type: 'email',
         email: email.value,
         password: password.value,
         verify_code: verifyCode.value.trim(),
@@ -538,7 +540,8 @@ async function handleVerify(): Promise<void> {
     await router.push(pendingRedirect.value || '/dashboard')
   } catch (error: unknown) {
     errorMessage.value = buildAuthErrorMessage(error, {
-      fallback: t('auth.verifyFailed')
+      fallback: t('auth.verifyFailed'),
+      t,
     })
 
     appStore.showError(errorMessage.value)

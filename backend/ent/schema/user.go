@@ -37,9 +37,11 @@ func (User) Fields() []ent.Field {
 	return []ent.Field{
 		// 唯一约束通过部分索引实现（WHERE deleted_at IS NULL），支持软删除后重用
 		// 见迁移文件 016_soft_delete_partial_unique_indexes.sql
+		// email 可为空：用户名注册用户无需提供邮箱（见迁移文件 128）
 		field.String("email").
 			MaxLen(255).
-			NotEmpty(),
+			Optional().
+			Nillable(),
 		field.String("password_hash").
 			MaxLen(255).
 			NotEmpty(),
@@ -57,7 +59,7 @@ func (User) Fields() []ent.Field {
 
 		// Optional profile fields (added later; default '' in DB migration)
 		field.String("username").
-			MaxLen(100).
+			MaxLen(32).
 			Default(""),
 		// wechat field migrated to user_attribute_values (see migration 019)
 		field.String("notes").
@@ -77,10 +79,10 @@ func (User) Fields() []ent.Field {
 		field.String("signup_source").
 			Validate(func(value string) error {
 				switch value {
-				case "email", "linuxdo", "wechat", "oidc":
+				case "email", "linuxdo", "wechat", "oidc", "username":
 					return nil
 				default:
-					return fmt.Errorf("must be one of email, linuxdo, wechat, oidc")
+					return fmt.Errorf("must be one of email, linuxdo, wechat, oidc, username")
 				}
 			}).
 			Default("email"),

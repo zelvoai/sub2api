@@ -102,7 +102,7 @@
                 <div class="text-sm font-medium text-gray-900 dark:text-white">
                   {{ displayName }}
                 </div>
-                <div class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
+                <div v-if="user.email" class="text-xs text-gray-500 dark:text-dark-400">{{ user.email }}</div>
               </div>
 
               <!-- Balance (mobile only) -->

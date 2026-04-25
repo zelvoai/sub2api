@@ -44,8 +44,8 @@
                 @click="selectUser(user)"
               >
                 <span class="text-gray-400">#{{ user.id }}</span>
-                <span class="text-gray-900 dark:text-white">{{ user.username || user.email }}</span>
-                <span v-if="user.username" class="text-xs text-gray-400">{{ user.email }}</span>
+                <span class="text-gray-900 dark:text-white">{{ user.username || user.email || `User #${user.id}` }}</span>
+                <span v-if="user.username && user.email" class="text-xs text-gray-400">{{ user.email }}</span>
               </button>
             </div>
           </div>

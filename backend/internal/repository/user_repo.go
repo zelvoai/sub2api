@@ -77,12 +77,33 @@ func (r *userRepository) Create(ctx context.Context, userIn *service.User) error
 	}
 	defer releaseEmailLock()
 
-	if err := ensureNormalizedEmailAvailableWithClient(txCtx, txClient, 0, userIn.Email); err != nil {
-		return err
+	if userIn.Email != "" {
+		if err := ensureNormalizedEmailAvailableWithClient(txCtx, txClient, 0, userIn.Email); err != nil {
+			return err
+		}
+	}
+
+	var releaseUsernameLock func()
+	if strings.TrimSpace(userIn.Username) != "" {
+		var err2 error
+		releaseUsernameLock, err2 = lockRepositoryScopedKeys(
+			txCtx,
+			txClient,
+			txAwareSQLExecutor(txCtx, r.sql, r.client),
+			normalizedUsernameUniquenessLockKey(userIn.Username),
+		)
+		if err2 != nil {
+			return err2
+		}
+		defer releaseUsernameLock()
+
+		if err2 := ensureNormalizedUsernameAvailableWithClient(txCtx, txClient, 0, userIn.Username); err2 != nil {
+			return err2
+		}
 	}
 
 	created, err := txClient.User.Create().
-		SetEmail(userIn.Email).
+		SetNillableEmail(nillableStr(userIn.Email)).
 		SetUsername(userIn.Username).
 		SetNotes(userIn.Notes).
 		SetPasswordHash(userIn.PasswordHash).
@@ -102,7 +123,7 @@ func (r *userRepository) Create(ctx context.Context, userIn *service.User) error
 	if err := r.syncUserAllowedGroupsWithClient(txCtx, txClient, created.ID, userIn.AllowedGroups); err != nil {
 		return err
 	}
-	if err := ensureEmailAuthIdentityWithClient(txCtx, txClient, created.ID, created.Email, "user_repo_create"); err != nil {
+	if err := ensureEmailAuthIdentityWithClient(txCtx, txClient, created.ID, derefString(created.Email), "user_repo_create"); err != nil {
 		return err
 	}
 
@@ -197,18 +218,37 @@ func (r *userRepository) Update(ctx context.Context, userIn *service.User) error
 	}
 	defer releaseEmailLock()
 
-	if err := ensureNormalizedEmailAvailableWithClient(txCtx, txClient, userIn.ID, userIn.Email); err != nil {
-		return err
+	if userIn.Email != "" {
+		if err := ensureNormalizedEmailAvailableWithClient(txCtx, txClient, userIn.ID, userIn.Email); err != nil {
+			return err
+		}
+	}
+
+	if strings.TrimSpace(userIn.Username) != "" {
+		releaseUsernameLock, err := lockRepositoryScopedKeys(
+			txCtx,
+			txClient,
+			txAwareSQLExecutor(txCtx, r.sql, r.client),
+			normalizedUsernameUniquenessLockKey(userIn.Username),
+		)
+		if err != nil {
+			return err
+		}
+		defer releaseUsernameLock()
+
+		if err := ensureNormalizedUsernameAvailableWithClient(txCtx, txClient, userIn.ID, userIn.Username); err != nil {
+			return err
+		}
 	}
 
 	existing, err := clientFromContext(txCtx, txClient).User.Get(txCtx, userIn.ID)
 	if err != nil {
 		return translatePersistenceError(err, service.ErrUserNotFound, nil)
 	}
-	oldEmail := existing.Email
+	oldEmail := derefString(existing.Email)
 
 	updateOp := txClient.User.UpdateOneID(userIn.ID).
-		SetEmail(userIn.Email).
+		SetNillableEmail(nillableStr(userIn.Email)).
 		SetUsername(userIn.Username).
 		SetNotes(userIn.Notes).
 		SetPasswordHash(userIn.PasswordHash).
@@ -242,7 +282,7 @@ func (r *userRepository) Update(ctx context.Context, userIn *service.User) error
 	if err := r.syncUserAllowedGroupsWithClient(txCtx, txClient, updated.ID, userIn.AllowedGroups); err != nil {
 		return err
 	}
-	if err := replaceEmailAuthIdentityWithClient(txCtx, txClient, updated.ID, oldEmail, updated.Email, "user_repo_update"); err != nil {
+	if err := replaceEmailAuthIdentityWithClient(txCtx, txClient, updated.ID, oldEmail, derefString(updated.Email), "user_repo_update"); err != nil {
 		return err
 	}
 
@@ -741,6 +781,29 @@ func (r *userRepository) ExistsByEmail(ctx context.Context, email string) (bool,
 	return r.client.User.Query().Where(userEmailLookupPredicate(email)).Exist(ctx)
 }
 
+func (r *userRepository) GetByUsername(ctx context.Context, username string) (*service.User, error) {
+	m, err := r.client.User.Query().
+		Where(usernameLookupPredicate(username)).
+		Only(ctx)
+	if err != nil {
+		return nil, translatePersistenceError(err, service.ErrUserNotFound, nil)
+	}
+
+	out := userEntityToService(m)
+	groups, err := r.loadAllowedGroups(ctx, []int64{m.ID})
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := groups[m.ID]; ok {
+		out.AllowedGroups = v
+	}
+	return out, nil
+}
+
+func (r *userRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	return r.client.User.Query().Where(usernameLookupPredicate(username)).Exist(ctx)
+}
+
 func ensureNormalizedEmailAvailableWithClient(ctx context.Context, client *dbent.Client, userID int64, email string) error {
 	client = clientFromContext(ctx, client)
 	if client == nil {
@@ -976,6 +1039,60 @@ func (r *userRepository) DisableTotp(ctx context.Context, userID int64) error {
 		Save(ctx)
 	if err != nil {
 		return translatePersistenceError(err, service.ErrUserNotFound, nil)
+	}
+	return nil
+}
+
+func nillableStr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func usernameLookupPredicate(username string) predicate.User {
+	normalized := normalizeUsernameLookupValue(username)
+	if normalized == "" {
+		return dbuser.UsernameEQ(username)
+	}
+	return predicate.User(func(s *entsql.Selector) {
+		s.Where(entsql.P(func(b *entsql.Builder) {
+			b.WriteString("LOWER(TRIM(").
+				Ident(s.C(dbuser.FieldUsername)).
+				WriteString(")) = ").
+				Arg(normalized)
+		}))
+	})
+}
+
+func normalizeUsernameLookupValue(username string) string {
+	return strings.ToLower(strings.TrimSpace(username))
+}
+
+func normalizedUsernameUniquenessLockKey(username string) string {
+	normalized := normalizeUsernameLookupValue(username)
+	if normalized == "" {
+		return ""
+	}
+	return "users:normalized-username:" + normalized
+}
+
+func ensureNormalizedUsernameAvailableWithClient(ctx context.Context, client *dbent.Client, userID int64, username string) error {
+	client = clientFromContext(ctx, client)
+	if client == nil {
+		return nil
+	}
+
+	matches, err := client.User.Query().
+		Where(usernameLookupPredicate(username)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, match := range matches {
+		if match.ID != userID {
+			return service.ErrUsernameExists
+		}
 	}
 	return nil
 }

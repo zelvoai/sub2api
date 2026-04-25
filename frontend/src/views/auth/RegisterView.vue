@@ -37,6 +37,30 @@
         </div>
       </div>
 
+      <!-- Account Type Tabs -->
+      <div class="flex rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <button
+          type="button"
+          class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all"
+          :class="accountType === 'username'
+            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+            : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-300'"
+          @click="accountType = 'username'"
+        >
+          {{ t('auth.usernameRegister') }}
+        </button>
+        <button
+          type="button"
+          class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all"
+          :class="accountType === 'email'
+            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+            : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-300'"
+          @click="accountType = 'email'"
+        >
+          {{ t('auth.emailRegister') }}
+        </button>
+      </div>
+
       <!-- Registration Disabled Message -->
       <div
         v-if="!registrationEnabled && settingsLoaded"
@@ -54,8 +78,35 @@
 
       <!-- Registration Form -->
       <form v-else @submit.prevent="handleRegister" class="space-y-5">
+        <!-- Username Input -->
+        <div v-if="accountType === 'username'">
+          <label for="username" class="input-label">
+            {{ t('auth.usernameLabel') }}
+          </label>
+          <div class="relative">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+              <Icon name="user" size="md" class="text-gray-400 dark:text-dark-500" />
+            </div>
+            <input
+              id="username"
+              v-model="formData.username"
+              type="text"
+              required
+              autofocus
+              autocomplete="username"
+              :disabled="isLoading"
+              class="input pl-11"
+              :class="{ 'input-error': errors.username }"
+              :placeholder="t('auth.usernamePlaceholder')"
+            />
+          </div>
+          <p class="input-hint">
+            {{ t('auth.usernameHint') }}
+          </p>
+        </div>
+
         <!-- Email Input -->
-        <div>
+        <div v-if="accountType === 'email'">
           <label for="email" class="input-label">
             {{ t('auth.emailLabel') }}
           </label>
@@ -248,7 +299,7 @@
           {{
             isLoading
               ? t('auth.processing')
-              : emailVerifyEnabled
+                : emailVerifyEnabled && accountType === 'email'
                 ? t('auth.continue')
                 : t('auth.createAccount')
           }}
@@ -293,6 +344,7 @@ import {
   isRegistrationEmailSuffixAllowed,
   normalizeRegistrationEmailSuffixWhitelist
 } from '@/utils/registrationEmailPolicy'
+import type { AuthAccountType } from '@/types'
 
 const { t, locale } = useI18n()
 
@@ -309,6 +361,7 @@ const isLoading = ref<boolean>(false)
 const settingsLoaded = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
+const accountType = ref<AuthAccountType>('username')
 
 // Public settings
 const registrationEnabled = ref<boolean>(true)
@@ -349,6 +402,7 @@ let invitationValidateTimeout: ReturnType<typeof setTimeout> | null = null
 
 const formData = reactive({
   email: '',
+  username: '',
   password: '',
   promo_code: '',
   invitation_code: ''
@@ -356,6 +410,7 @@ const formData = reactive({
 
 const errors = reactive({
   email: '',
+  username: '',
   password: '',
   turnstile: '',
   invitation_code: ''
@@ -363,6 +418,7 @@ const errors = reactive({
 
 const validationToastMessage = computed(() =>
   errors.email ||
+  errors.username ||
   errors.password ||
   (invitationValidation.invalid ? invitationValidation.message : '') ||
   errors.invitation_code ||
@@ -583,6 +639,10 @@ function validateEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
+function validateUsername(username: string): boolean {
+  return /^[\u4e00-\u9fffA-Za-z0-9_]{2,32}$/.test(username.trim())
+}
+
 function buildEmailSuffixNotAllowedMessage(): string {
   const normalizedWhitelist = normalizeRegistrationEmailSuffixWhitelist(
     registrationEmailSuffixWhitelist.value
@@ -599,24 +659,35 @@ function buildEmailSuffixNotAllowedMessage(): string {
 function validateForm(): boolean {
   // Reset errors
   errors.email = ''
+  errors.username = ''
   errors.password = ''
   errors.turnstile = ''
   errors.invitation_code = ''
 
   let isValid = true
 
-  // Email validation
-  if (!formData.email.trim()) {
-    errors.email = t('auth.emailRequired')
-    isValid = false
-  } else if (!validateEmail(formData.email)) {
-    errors.email = t('auth.invalidEmail')
-    isValid = false
-  } else if (
-    !isRegistrationEmailSuffixAllowed(formData.email, registrationEmailSuffixWhitelist.value)
-  ) {
-    errors.email = buildEmailSuffixNotAllowedMessage()
-    isValid = false
+  if (accountType.value === 'email') {
+    // Email validation
+    if (!formData.email.trim()) {
+      errors.email = t('auth.emailRequired')
+      isValid = false
+    } else if (!validateEmail(formData.email)) {
+      errors.email = t('auth.invalidEmail')
+      isValid = false
+    } else if (
+      !isRegistrationEmailSuffixAllowed(formData.email, registrationEmailSuffixWhitelist.value)
+    ) {
+      errors.email = buildEmailSuffixNotAllowedMessage()
+      isValid = false
+    }
+  } else {
+    if (!formData.username.trim()) {
+      errors.username = t('auth.usernameRequired')
+      isValid = false
+    } else if (!validateUsername(formData.username)) {
+      errors.username = t('auth.invalidUsername')
+      isValid = false
+    }
   }
 
   // Password validation
@@ -697,12 +768,13 @@ async function handleRegister(): Promise<void> {
   isLoading.value = true
 
   try {
-    // If email verification is enabled, redirect to verification page
-    if (emailVerifyEnabled.value) {
+    // If email verification is enabled, redirect to verification page (email registration only)
+    if (emailVerifyEnabled.value && accountType.value === 'email') {
       // Store registration data in sessionStorage
       sessionStorage.setItem(
         'register_data',
         JSON.stringify({
+          account_type: 'email',
           email: formData.email,
           password: formData.password,
           turnstile_token: turnstileToken.value,
@@ -718,7 +790,9 @@ async function handleRegister(): Promise<void> {
 
     // Otherwise, directly register
     await authStore.register({
-      email: formData.email,
+      account_type: accountType.value,
+      email: accountType.value === 'email' ? formData.email : undefined,
+      username: accountType.value === 'username' ? formData.username : undefined,
       password: formData.password,
       turnstile_token: turnstileEnabled.value ? turnstileToken.value : undefined,
       promo_code: formData.promo_code || undefined,
@@ -739,7 +813,8 @@ async function handleRegister(): Promise<void> {
 
     // Handle registration error
     errorMessage.value = buildAuthErrorMessage(error, {
-      fallback: t('auth.registrationFailed')
+      fallback: t('auth.registrationFailed'),
+      t,
     })
 
     // Also show error toast

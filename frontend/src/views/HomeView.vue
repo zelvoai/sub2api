@@ -445,8 +445,9 @@ const isAdmin = computed(() => authStore.isAdmin)
 const dashboardPath = computed(() => isAdmin.value ? '/admin/dashboard' : '/dashboard')
 const userInitial = computed(() => {
   const user = authStore.user
-  if (!user || !user.email) return ''
-  return user.email.charAt(0).toUpperCase()
+  const display = user?.username || user?.email || ''
+  if (!display) return 'U'
+  return display.charAt(0).toUpperCase()
 })
 
 // Current year for footer

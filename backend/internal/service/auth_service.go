@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,8 @@ var (
 	ErrInvalidCredentials      = infraerrors.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
 	ErrUserNotActive           = infraerrors.Forbidden("USER_NOT_ACTIVE", "user is not active")
 	ErrEmailExists             = infraerrors.Conflict("EMAIL_EXISTS", "email already exists")
+	ErrUsernameExists          = infraerrors.Conflict("USERNAME_EXISTS", "username already exists")
+	ErrUsernameInvalid         = infraerrors.BadRequest("USERNAME_INVALID", "username is invalid")
 	ErrEmailReserved           = infraerrors.BadRequest("EMAIL_RESERVED", "email is reserved")
 	ErrInvalidToken            = infraerrors.Unauthorized("INVALID_TOKEN", "invalid token")
 	ErrTokenExpired            = infraerrors.Unauthorized("TOKEN_EXPIRED", "token has expired")
@@ -245,6 +248,133 @@ func (s *AuthService) RegisterWithVerification(ctx context.Context, email, passw
 	}
 
 	// 生成token
+	token, err := s.GenerateToken(user)
+	if err != nil {
+		return "", nil, fmt.Errorf("generate token: %w", err)
+	}
+
+	return token, user, nil
+}
+
+var usernameRegex = regexp.MustCompile(`^[\p{Han}A-Za-z0-9_]{2,32}$`)
+
+func ValidateUsername(username string) error {
+	trimmed := strings.TrimSpace(username)
+	if trimmed == "" {
+		return ErrUsernameInvalid
+	}
+	if !usernameRegex.MatchString(trimmed) {
+		return ErrUsernameInvalid
+	}
+	return nil
+}
+
+func (s *AuthService) RegisterWithUsername(ctx context.Context, username, password, promoCode, invitationCode string) (string, *User, error) {
+	if s.settingService == nil || !s.settingService.IsRegistrationEnabled(ctx) {
+		return "", nil, ErrRegDisabled
+	}
+
+	username = strings.TrimSpace(username)
+	if err := ValidateUsername(username); err != nil {
+		return "", nil, err
+	}
+
+	var invitationRedeemCode *RedeemCode
+	if s.settingService != nil && s.settingService.IsInvitationCodeEnabled(ctx) {
+		if invitationCode == "" {
+			return "", nil, ErrInvitationCodeRequired
+		}
+		redeemCode, err := s.redeemRepo.GetByCode(ctx, invitationCode)
+		if err != nil {
+			return "", nil, ErrInvitationCodeInvalid
+		}
+		if redeemCode.Type != RedeemTypeInvitation || redeemCode.Status != StatusUnused {
+			return "", nil, ErrInvitationCodeInvalid
+		}
+		invitationRedeemCode = redeemCode
+	}
+
+	existsUsername, err := s.userRepo.ExistsByUsername(ctx, username)
+	if err != nil {
+		return "", nil, ErrServiceUnavailable
+	}
+	if existsUsername {
+		return "", nil, ErrUsernameExists
+	}
+
+	hashedPassword, err := s.HashPassword(password)
+	if err != nil {
+		return "", nil, fmt.Errorf("hash password: %w", err)
+	}
+
+	grantPlan := s.resolveSignupGrantPlan(ctx, "username")
+
+	var defaultRPMLimit int
+	if s.settingService != nil {
+		defaultRPMLimit = s.settingService.GetDefaultUserRPMLimit(ctx)
+	}
+
+	user := &User{
+		Email:        "",
+		Username:     username,
+		PasswordHash: hashedPassword,
+		Role:         RoleUser,
+		Balance:      grantPlan.Balance,
+		Concurrency:  grantPlan.Concurrency,
+		RPMLimit:     defaultRPMLimit,
+		Status:       StatusActive,
+	}
+
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		if errors.Is(err, ErrUsernameExists) {
+			return "", nil, ErrUsernameExists
+		}
+		return "", nil, ErrServiceUnavailable
+	}
+	s.postAuthUserBootstrap(ctx, user, "username", true)
+	s.assignSubscriptions(ctx, user.ID, grantPlan.Subscriptions, "auto assigned by signup defaults")
+
+	if invitationRedeemCode != nil {
+		if err := s.redeemRepo.Use(ctx, invitationRedeemCode.ID, user.ID); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to mark invitation code as used for user %d: %v", user.ID, err)
+		}
+	}
+	if promoCode != "" && s.promoService != nil && s.settingService != nil && s.settingService.IsPromoCodeEnabled(ctx) {
+		if err := s.promoService.ApplyPromoCode(ctx, user.ID, promoCode); err != nil {
+			logger.LegacyPrintf("service.auth", "[Auth] Failed to apply promo code for user %d: %v", user.ID, err)
+		} else {
+			if updatedUser, err := s.userRepo.GetByID(ctx, user.ID); err == nil {
+				user = updatedUser
+			}
+		}
+	}
+
+	token, err := s.GenerateToken(user)
+	if err != nil {
+		return "", nil, fmt.Errorf("generate token: %w", err)
+	}
+
+	return token, user, nil
+}
+
+func (s *AuthService) LoginByUsername(ctx context.Context, username, password string) (string, *User, error) {
+	user, err := s.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return "", nil, ErrInvalidCredentials
+		}
+		logger.LegacyPrintf("service.auth", "[Auth] Database error during login: %v", err)
+		return "", nil, ErrServiceUnavailable
+	}
+
+	if !s.CheckPassword(password, user.PasswordHash) {
+		return "", nil, ErrInvalidCredentials
+	}
+
+	if !user.IsActive() {
+		return "", nil, ErrUserNotActive
+	}
+
 	token, err := s.GenerateToken(user)
 	if err != nil {
 		return "", nil, fmt.Errorf("generate token: %w", err)

@@ -7,12 +7,12 @@
         <div class="flex items-center gap-3">
           <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900/30">
             <span class="text-lg font-medium text-primary-700 dark:text-primary-300">
-              {{ user.email.charAt(0).toUpperCase() }}
+              {{ (user.username || user.email || 'U').charAt(0).toUpperCase() }}
             </span>
           </div>
           <div class="min-w-0 flex-1">
             <div class="flex items-center gap-2">
-              <p class="truncate font-medium text-gray-900 dark:text-white">{{ user.email }}</p>
+              <p class="truncate font-medium text-gray-900 dark:text-white">{{ user.username || user.email || `User #${user.id}` }}</p>
               <span
                 v-if="user.username"
                 class="flex-shrink-0 rounded bg-primary-50 px-1.5 py-0.5 text-xs text-primary-600 dark:bg-primary-900/20 dark:text-primary-400"

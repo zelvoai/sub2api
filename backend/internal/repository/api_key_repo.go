@@ -653,7 +653,7 @@ func userEntityToService(u *dbent.User) *service.User {
 	}
 	out := &service.User{
 		ID:                         u.ID,
-		Email:                      u.Email,
+		Email:                      derefString(u.Email),
 		Username:                   u.Username,
 		Notes:                      u.Notes,
 		PasswordHash:               u.PasswordHash,

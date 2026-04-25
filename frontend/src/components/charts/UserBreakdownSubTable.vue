@@ -13,7 +13,7 @@
           :key="user.user_id"
           class="border-t border-gray-100/50 dark:border-gray-700/50"
         >
-          <td class="max-w-[120px] truncate py-1 pl-6 text-gray-600 dark:text-gray-300" :title="user.email">
+          <td class="max-w-[120px] truncate py-1 pl-6 text-gray-600 dark:text-gray-300" :title="user.email || `User #${user.user_id}`">
             {{ user.email || `User #${user.user_id}` }}
           </td>
           <td class="py-1 text-right text-gray-500 dark:text-gray-400">

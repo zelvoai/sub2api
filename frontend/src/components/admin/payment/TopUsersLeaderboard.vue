@@ -24,7 +24,7 @@
           >
             {{ idx + 1 }}
           </span>
-          <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.email }}</span>
+          <span class="text-sm text-gray-700 dark:text-gray-300">{{ user.email || `User #${user.user_id}` }}</span>
         </div>
         <span class="text-sm font-medium text-gray-900 dark:text-white">
           ${{ user.amount.toFixed(2) }}

@@ -37,10 +37,58 @@
         </div>
       </div>
 
+      <!-- Account Type Tabs -->
+      <div class="flex rounded-xl bg-gray-100 p-1 dark:bg-dark-800">
+        <button
+          type="button"
+          class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all"
+          :class="accountType === 'username'
+            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+            : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-300'"
+          @click="accountType = 'username'"
+        >
+          {{ t('auth.usernameLogin') }}
+        </button>
+        <button
+          type="button"
+          class="flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all"
+          :class="accountType === 'email'
+            ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+            : 'text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-300'"
+          @click="accountType = 'email'"
+        >
+          {{ t('auth.emailLogin') }}
+        </button>
+      </div>
+
       <!-- Login Form -->
       <form @submit.prevent="handleLogin" class="space-y-5">
+        <!-- Username Input -->
+        <div v-if="accountType === 'username'">
+          <label for="username" class="input-label">
+            {{ t('auth.usernameLabel') }}
+          </label>
+          <div class="relative">
+            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+              <Icon name="user" size="md" class="text-gray-400 dark:text-dark-500" />
+            </div>
+            <input
+              id="username"
+              v-model="formData.username"
+              type="text"
+              required
+              autofocus
+              autocomplete="username"
+              :disabled="isLoading"
+              class="input pl-11"
+              :class="{ 'input-error': errors.username }"
+              :placeholder="t('auth.usernamePlaceholder')"
+            />
+          </div>
+        </div>
+
         <!-- Email Input -->
-        <div>
+        <div v-if="accountType === 'email'">
           <label for="email" class="input-label">
             {{ t('auth.emailLabel') }}
           </label>
@@ -95,7 +143,7 @@
           <div class="mt-1 flex items-center justify-between">
             <span></span>
             <router-link
-              v-if="passwordResetEnabled && !backendModeEnabled"
+              v-if="passwordResetEnabled && !backendModeEnabled && accountType === 'email'"
               to="/forgot-password"
               class="text-sm font-medium text-primary-600 transition-colors hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300"
             >
@@ -185,23 +233,20 @@ import Icon from '@/components/icons/Icon.vue'
 import TurnstileWidget from '@/components/TurnstileWidget.vue'
 import { useAuthStore, useAppStore } from '@/stores'
 import { getPublicSettings, isTotp2FARequired, isWeChatWebOAuthEnabled } from '@/api/auth'
-import type { TotpLoginResponse } from '@/types'
+import { buildAuthErrorMessage } from '@/utils/authError'
+import type { AuthAccountType, TotpLoginResponse } from '@/types'
 
 const { t } = useI18n()
-
-// ==================== Router & Stores ====================
 
 const router = useRouter()
 const authStore = useAuthStore()
 const appStore = useAppStore()
 
-// ==================== State ====================
-
 const isLoading = ref<boolean>(false)
 const errorMessage = ref<string>('')
 const showPassword = ref<boolean>(false)
+const accountType = ref<AuthAccountType>('username')
 
-// Public settings
 const turnstileEnabled = ref<boolean>(false)
 const turnstileSiteKey = ref<string>('')
 const linuxdoOAuthEnabled = ref<boolean>(false)
@@ -211,11 +256,9 @@ const oidcOAuthEnabled = ref<boolean>(false)
 const oidcOAuthProviderName = ref<string>('OIDC')
 const passwordResetEnabled = ref<boolean>(false)
 
-// Turnstile
 const turnstileRef = ref<InstanceType<typeof TurnstileWidget> | null>(null)
 const turnstileToken = ref<string>('')
 
-// 2FA state
 const show2FAModal = ref<boolean>(false)
 const totpTempToken = ref<string>('')
 const totpUserEmailMasked = ref<string>('')
@@ -223,17 +266,19 @@ const totpModalRef = ref<InstanceType<typeof TotpLoginModal> | null>(null)
 
 const formData = reactive({
   email: '',
+  username: '',
   password: ''
 })
 
 const errors = reactive({
   email: '',
+  username: '',
   password: '',
   turnstile: ''
 })
 
 const validationToastMessage = computed(
-  () => errors.email || errors.password || errors.turnstile || ''
+  () => errors.email || errors.username || errors.password || errors.turnstile || ''
 )
 
 watch(validationToastMessage, (value, previousValue) => {
@@ -241,8 +286,6 @@ watch(validationToastMessage, (value, previousValue) => {
     appStore.showError(value)
   }
 })
-
-// ==================== Lifecycle ====================
 
 onMounted(async () => {
   const expiredFlag = sessionStorage.getItem('auth_expired')
@@ -269,8 +312,6 @@ onMounted(async () => {
   }
 })
 
-// ==================== Turnstile Handlers ====================
-
 function onTurnstileVerify(token: string): void {
   turnstileToken.value = token
   errors.turnstile = ''
@@ -286,26 +327,32 @@ function onTurnstileError(): void {
   errors.turnstile = t('auth.turnstileFailed')
 }
 
-// ==================== Validation ====================
-
 function validateForm(): boolean {
-  // Reset errors
   errors.email = ''
+  errors.username = ''
   errors.password = ''
   errors.turnstile = ''
 
   let isValid = true
 
-  // Email validation
-  if (!formData.email.trim()) {
-    errors.email = t('auth.emailRequired')
-    isValid = false
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    errors.email = t('auth.invalidEmail')
-    isValid = false
+  if (accountType.value === 'email') {
+    if (!formData.email.trim()) {
+      errors.email = t('auth.emailRequired')
+      isValid = false
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = t('auth.invalidEmail')
+      isValid = false
+    }
+  } else {
+    if (!formData.username.trim()) {
+      errors.username = t('auth.usernameRequired')
+      isValid = false
+    } else if (!/^[\u4e00-\u9fffA-Za-z0-9_]{2,32}$/.test(formData.username.trim())) {
+      errors.username = t('auth.invalidUsername')
+      isValid = false
+    }
   }
 
-  // Password validation
   if (!formData.password) {
     errors.password = t('auth.passwordRequired')
     isValid = false
@@ -314,7 +361,6 @@ function validateForm(): boolean {
     isValid = false
   }
 
-  // Turnstile validation
   if (turnstileEnabled.value && !turnstileToken.value) {
     errors.turnstile = t('auth.completeVerification')
     isValid = false
@@ -323,13 +369,9 @@ function validateForm(): boolean {
   return isValid
 }
 
-// ==================== Form Handlers ====================
-
 async function handleLogin(): Promise<void> {
-  // Clear previous error
   errorMessage.value = ''
 
-  // Validate form
   if (!validateForm()) {
     return
   }
@@ -337,14 +379,14 @@ async function handleLogin(): Promise<void> {
   isLoading.value = true
 
   try {
-    // Call auth store login
     const response = await authStore.login({
-      email: formData.email,
+      account_type: accountType.value,
+      email: accountType.value === 'email' ? formData.email : undefined,
+      username: accountType.value === 'username' ? formData.username : undefined,
       password: formData.password,
       turnstile_token: turnstileEnabled.value ? turnstileToken.value : undefined
     })
 
-    // Check if 2FA is required
     if (isTotp2FARequired(response)) {
       const totpResponse = response as TotpLoginResponse
       totpTempToken.value = totpResponse.temp_token || ''
@@ -354,38 +396,26 @@ async function handleLogin(): Promise<void> {
       return
     }
 
-    // Show success toast
     appStore.showSuccess(t('auth.loginSuccess'))
 
-    // Redirect to dashboard or intended route
     const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
     await router.push(redirectTo)
   } catch (error: unknown) {
-    // Reset Turnstile on error
     if (turnstileRef.value) {
       turnstileRef.value.reset()
       turnstileToken.value = ''
     }
 
-    // Handle login error
-    const err = error as { message?: string; response?: { data?: { detail?: string } } }
+    errorMessage.value = buildAuthErrorMessage(error, {
+      fallback: t('auth.loginFailed'),
+      t,
+    })
 
-    if (err.response?.data?.detail) {
-      errorMessage.value = err.response.data.detail
-    } else if (err.message) {
-      errorMessage.value = err.message
-    } else {
-      errorMessage.value = t('auth.loginFailed')
-    }
-
-    // Also show error toast
     appStore.showError(errorMessage.value)
   } finally {
     isLoading.value = false
   }
 }
-
-// ==================== 2FA Handlers ====================
 
 async function handle2FAVerify(code: string): Promise<void> {
   if (totpModalRef.value) {
@@ -395,11 +425,9 @@ async function handle2FAVerify(code: string): Promise<void> {
   try {
     await authStore.login2FA(totpTempToken.value, code)
 
-    // Close modal and show success
     show2FAModal.value = false
     appStore.showSuccess(t('auth.loginSuccess'))
 
-    // Redirect to dashboard or intended route
     const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
     await router.push(redirectTo)
   } catch (error: unknown) {
