@@ -363,6 +363,12 @@ func ProvideOpsScheduledReportService(
 	return svc
 }
 
+func ProvideAIRequestLogCleanupService(logService *AIRequestLogService) *AIRequestLogCleanupService {
+	svc := NewAIRequestLogCleanupService(logService)
+	svc.Start()
+	return svc
+}
+
 // ProvideAPIKeyAuthCacheInvalidator 提供 API Key 认证缓存失效能力
 func ProvideAPIKeyAuthCacheInvalidator(apiKeyService *APIKeyService) APIKeyAuthCacheInvalidator {
 	// Start Pub/Sub subscriber for L1 cache invalidation across instances
@@ -423,6 +429,7 @@ var ProviderSet = wire.NewSet(
 	ProvideBillingCacheService,
 	NewAnnouncementService,
 	NewAdminService,
+	NewAIRequestLogService,
 	NewGatewayService,
 	NewOpenAIGatewayService,
 	NewOAuthService,
@@ -452,6 +459,7 @@ var ProviderSet = wire.NewSet(
 	ProvideOpsAlertEvaluatorService,
 	ProvideOpsCleanupService,
 	ProvideOpsScheduledReportService,
+	ProvideAIRequestLogCleanupService,
 	NewEmailService,
 	ProvideEmailQueueService,
 	NewTurnstileService,

@@ -356,6 +356,7 @@ export default {
     proxies: 'IP管理',
     redeemCodes: '兑换码',
     ops: '运维监控',
+    aiRequestLogs: 'AI 日志',
     promoCodes: '优惠码',
     settings: '系统设置',
     myAccount: '我的账户',
@@ -1328,6 +1329,67 @@ export default {
       systemSettings: '系统设置',
       configureSystem: '配置系统设置',
       failedToLoad: '加载仪表盘数据失败'
+    },
+
+    aiRequestLogs: {
+      title: 'AI 请求日志',
+      description: '查看完整 AI 请求体和响应体，便于排查提示词和结果问题',
+      loadFailed: '加载 AI 请求日志失败',
+      empty: '暂无 AI 请求日志',
+      filters: {
+        query: '搜索请求 ID / 模型 / 错误信息',
+        requestId: '请求 ID',
+        clientRequestId: '客户端请求 ID',
+        model: '模型',
+        userId: '用户 ID',
+        apiKeyId: 'API Key ID',
+        accountId: '账号 ID',
+        groupId: '分组 ID',
+        platform: '平台',
+        allPlatforms: '全部平台',
+        statusCode: '状态码',
+        startTime: '开始时间',
+        endTime: '结束时间'
+      },
+      meta: {
+        platform: '平台',
+        model: '模型',
+        status: '状态',
+        duration: '耗时',
+        userId: '用户 ID',
+        apiKeyId: 'API Key ID',
+        accountId: '账号 ID',
+        groupId: '分组 ID'
+      },
+      table: {
+        time: '时间',
+        platform: '平台',
+        model: '模型',
+        status: '状态',
+        requestId: '请求 ID',
+        duration: '耗时 ms'
+      },
+      retention: {
+        title: '保留策略',
+        enabled: '启用日志记录',
+        retentionHours: '保留小时数',
+        cleanupInterval: '清理间隔（分钟）',
+        batchSize: '单次清理批量',
+        loadFailed: '加载保留策略失败',
+        saveSuccess: '保留策略已保存',
+        saveFailed: '保存保留策略失败'
+      },
+      detail: {
+        title: '日志详情',
+        requestBody: '请求体',
+        responseBody: '响应体',
+        errorMessage: '错误信息',
+        expand: '展开',
+        collapse: '收起',
+        loadFailed: '加载日志详情失败',
+        copySuccess: '已复制到剪贴板',
+        copyFailed: '复制失败'
+      }
     },
 
     backup: {

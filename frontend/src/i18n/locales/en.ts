@@ -356,6 +356,7 @@ export default {
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
+    aiRequestLogs: 'AI Logs',
     promoCodes: 'Promo Codes',
     settings: 'Settings',
     myAccount: 'My Account',
@@ -4718,6 +4719,67 @@ export default {
         resetZoomHint: 'Reset zoom (if enabled)',
         downloadChart: 'Download',
         downloadChartHint: 'Download chart as image'
+      }
+    },
+
+    aiRequestLogs: {
+      title: 'AI Request Logs',
+      description: 'Inspect complete AI request and response payloads for debugging',
+      loadFailed: 'Failed to load AI request logs',
+      empty: 'No AI request logs found',
+      filters: {
+        query: 'Search request ID / model / error',
+        requestId: 'Request ID',
+        clientRequestId: 'Client Request ID',
+        model: 'Model',
+        userId: 'User ID',
+        apiKeyId: 'API Key ID',
+        accountId: 'Account ID',
+        groupId: 'Group ID',
+        platform: 'Platform',
+        allPlatforms: 'All platforms',
+        statusCode: 'Status code',
+        startTime: 'Start time',
+        endTime: 'End time'
+      },
+      meta: {
+        platform: 'Platform',
+        model: 'Model',
+        status: 'Status',
+        duration: 'Duration',
+        userId: 'User ID',
+        apiKeyId: 'API Key ID',
+        accountId: 'Account ID',
+        groupId: 'Group ID'
+      },
+      table: {
+        time: 'Time',
+        platform: 'Platform',
+        model: 'Model',
+        status: 'Status',
+        requestId: 'Request ID',
+        duration: 'Duration ms'
+      },
+      retention: {
+        title: 'Retention Settings',
+        enabled: 'Enable logging',
+        retentionHours: 'Retention hours',
+        cleanupInterval: 'Cleanup interval minutes',
+        batchSize: 'Cleanup batch size',
+        loadFailed: 'Failed to load retention settings',
+        saveSuccess: 'Retention settings saved',
+        saveFailed: 'Failed to save retention settings'
+      },
+      detail: {
+        title: 'Log Detail',
+        requestBody: 'Request Body',
+        responseBody: 'Response Body',
+        errorMessage: 'Error Message',
+        expand: 'Expand',
+        collapse: 'Collapse',
+        loadFailed: 'Failed to load log detail',
+        copySuccess: 'Copied to clipboard',
+        copyFailed: 'Failed to copy'
       }
     },
 

@@ -188,6 +188,11 @@ func registerOpsRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		ops.GET("/dashboard/error-trend", h.Admin.Ops.GetDashboardErrorTrend)
 		ops.GET("/dashboard/error-distribution", h.Admin.Ops.GetDashboardErrorDistribution)
 		ops.GET("/dashboard/openai-token-stats", h.Admin.Ops.GetDashboardOpenAITokenStats)
+
+		ops.GET("/ai-request-logs", h.Admin.AIRequestLog.List)
+		ops.GET("/ai-request-logs/:id", h.Admin.AIRequestLog.GetByID)
+		ops.GET("/ai-request-logs/settings/retention", h.Admin.AIRequestLog.GetRetentionSettings)
+		ops.PUT("/ai-request-logs/settings/retention", h.Admin.AIRequestLog.UpdateRetentionSettings)
 	}
 }
 
