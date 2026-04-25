@@ -6,7 +6,23 @@
           <h1 class="images2-title">{{ pageTitle }}</h1>
         </div>
         <div class="images2-balance-pill" :class="canGenerate ? '' : 'is-alert'">
-          <span>{{ t('images2.balance') }} ${{ balanceText }}</span>
+          <span class="images2-inline-icon">
+            <svg
+              class="images2-balance-icon"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.5"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"
+              />
+            </svg>
+            {{ t('images2.balance') }} ${{ balanceText }}
+          </span>
           <span class="images2-balance-separator"></span>
           <span>{{ t('images2.priceText', { price: priceText }) }}</span>
         </div>
@@ -37,24 +53,20 @@
               :disabled="isGenerating"
               @click="selectedSize = option.value"
             >
+              <Icon :name="option.icon" size="sm" :stroke-width="1.8" />
               {{ option.label }}
             </button>
           </div>
         </div>
 
-        <div v-if="imageUrl" class="images2-edit-hint">
-          {{ t('images2.editHint') }}
-        </div>
-
         <div class="images2-toolbar">
-          <button class="images2-primary" :class="!canGenerate ? 'is-alert' : ''" :disabled="isGenerating || !prompt.trim() || !canGenerate" @click="generateImage">
-            {{ isGenerating ? t('images2.generating') : (imageUrl ? t('images2.editCurrent') : t('images2.generate')) }}
+          <button class="images2-primary" :class="!canGenerate ? 'is-alert' : ''" :disabled="isGenerating || (canGenerate && !prompt.trim())" @click="handlePrimaryAction">
+            <Icon :name="primaryActionIcon" size="sm" :stroke-width="2" />
+            {{ primaryActionText }}
           </button>
           <button class="images2-secondary" :disabled="isGenerating" @click="resetCanvas">
+            <Icon name="plus" size="sm" :stroke-width="2" />
             {{ t('images2.newImage') }}
-          </button>
-          <button class="images2-link" @click="goRecharge">
-            {{ rechargeCtaText }}
           </button>
         </div>
       </section>
@@ -65,15 +77,17 @@
           <p>{{ t('images2.loadingHint') }}</p>
         </div>
 
-        <template v-else-if="imageUrl">
-          <img :src="imageUrl" :alt="revisedPrompt || prompt" class="images2-image" />
-          <div class="images2-result-hint">
-            {{ t('images2.resultEditHint') }}
+        <template v-else-if="hasImage">
+          <div class="images2-stage-meta">
+            <div class="images2-stage-footer">
+              <p class="images2-notice">{{ noticeText }}</p>
+              <button class="images2-secondary images2-download-button" @click="downloadImage">
+                <Icon name="download" size="sm" :stroke-width="2" />
+                {{ t('images2.saveImage') }}
+              </button>
+            </div>
           </div>
-          <div class="images2-stage-footer">
-            <p class="images2-notice">{{ noticeText }}</p>
-            <button class="images2-secondary" @click="downloadImage">{{ t('images2.saveImage') }}</button>
-          </div>
+          <img :src="displayImageUrl" :alt="revisedPrompt || prompt" class="images2-image" />
         </template>
 
         <div v-else class="images2-empty">
@@ -89,6 +103,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import { Icon } from '@/components/icons'
 import images2API, { type Images2Size } from '@/api/images2'
 import { useAppStore } from '@/stores/app'
 import { useAuthStore } from '@/stores/auth'
@@ -105,10 +120,10 @@ const revisedPrompt = ref('')
 const errorMessage = ref('')
 const selectedSize = ref<Images2Size>('1024x1024')
 
-const sizeOptions: Array<{ value: Images2Size; label: string }> = [
-  { value: '1024x1024', label: t('images2.sizeSquare') },
-  { value: '1536x1024', label: t('images2.sizeLandscape') },
-  { value: '1024x1536', label: t('images2.sizePortrait') },
+const sizeOptions: Array<{ value: Images2Size; label: string; icon: 'square' | 'rectangleHorizontal' | 'rectangleVertical' }> = [
+  { value: '1024x1024', label: t('images2.sizeSquare'), icon: 'square' },
+  { value: '1536x1024', label: t('images2.sizeLandscape'), icon: 'rectangleHorizontal' },
+  { value: '1024x1536', label: t('images2.sizePortrait'), icon: 'rectangleVertical' },
 ]
 
 const settings = computed(() => appStore.cachedPublicSettings)
@@ -120,9 +135,17 @@ const unitPrice = computed(() => settings.value?.images2_price_per_image ?? 0.5)
 const canGenerate = computed(() => (user.value?.balance ?? 0) >= unitPrice.value)
 const balanceText = computed(() => (user.value?.balance ?? 0).toFixed(2))
 const priceText = computed(() => unitPrice.value.toFixed(2))
-const rechargeCtaText = computed(() => canGenerate.value
-  ? t('images2.goRecharge')
-  : t('images2.insufficientRechargeCta'))
+const hasImage = computed(() => Boolean(imageUrl.value))
+const displayImageUrl = computed(() => imageUrl.value)
+const primaryActionIcon = computed(() => {
+  if (!canGenerate.value) return 'creditCard'
+  return hasImage.value ? 'edit' : 'sparkles'
+})
+const primaryActionText = computed(() => {
+  if (isGenerating.value) return t('images2.generating')
+  if (!canGenerate.value) return t('images2.rechargePrimary')
+  return hasImage.value ? t('images2.editCurrent') : t('images2.generate')
+})
 
 onMounted(async () => {
   await Promise.allSettled([appStore.fetchPublicSettings(), authStore.refreshUser()])
@@ -146,6 +169,9 @@ async function generateImage() {
       imageUrl.value = ''
     }
     revisedPrompt.value = typeof first?.revised_prompt === 'string' ? first.revised_prompt : (result.revised_prompt || '')
+    if (imageUrl.value) {
+      appStore.showSuccess(t('images2.generateSuccessToast'), 8000)
+    }
     await authStore.refreshUser()
   } catch (error: any) {
     const message = error?.response?.data?.error?.message
@@ -162,6 +188,15 @@ async function generateImage() {
   }
 }
 
+function handlePrimaryAction() {
+  if (isGenerating.value) return
+  if (!canGenerate.value) {
+    goRecharge()
+    return
+  }
+  void generateImage()
+}
+
 function resetCanvas() {
   prompt.value = ''
   imageUrl.value = ''
@@ -174,19 +209,19 @@ function goRecharge() {
 }
 
 async function downloadImage() {
-  if (!imageUrl.value) return
+  if (!displayImageUrl.value) return
   const filename = `chatgpt-images-2-${new Date().toISOString().replace(/[:.]/g, '-')}.png`
   const link = document.createElement('a')
   link.download = filename
 
-  if (imageUrl.value.startsWith('data:')) {
-    link.href = imageUrl.value
+  if (displayImageUrl.value.startsWith('data:')) {
+    link.href = displayImageUrl.value
     link.click()
     return
   }
 
   try {
-    const response = await fetch(imageUrl.value, { mode: 'cors' })
+    const response = await fetch(displayImageUrl.value, { mode: 'cors' })
     if (!response.ok) throw new Error(`download failed: ${response.status}`)
     const blob = await response.blob()
     const objectUrl = URL.createObjectURL(blob)
@@ -194,7 +229,7 @@ async function downloadImage() {
     link.click()
     URL.revokeObjectURL(objectUrl)
   } catch {
-    link.href = imageUrl.value
+    link.href = displayImageUrl.value
     link.target = '_blank'
     link.rel = 'noopener noreferrer'
     link.click()
@@ -237,6 +272,18 @@ async function downloadImage() {
   padding: 0.75rem 1rem;
   color: #334155;
   backdrop-filter: blur(16px);
+}
+
+.images2-inline-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.images2-balance-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 .images2-balance-pill.is-alert {
@@ -311,12 +358,15 @@ async function downloadImage() {
 .images2-size-options {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 0.5rem;
 }
 
 .images2-size-option {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   border: 1px solid rgba(148, 163, 184, 0.28);
   border-radius: 9999px;
   background: rgba(255, 255, 255, 0.72);
@@ -339,7 +389,19 @@ async function downloadImage() {
   opacity: 0.55;
 }
 
-.images2-edit-hint,
+.images2-dev-toggle {
+  margin-top: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.images2-dev-toggle input {
+  margin: 0;
+}
+
 .images2-result-hint {
   border-radius: 16px;
   border: 1px solid rgba(14, 165, 233, 0.2);
@@ -347,11 +409,6 @@ async function downloadImage() {
   color: #0369a1;
   font-size: 0.9rem;
   line-height: 1.55;
-}
-
-.images2-edit-hint {
-  margin-top: 0.9rem;
-  padding: 0.75rem 0.9rem;
 }
 
 .images2-toolbar {
@@ -365,6 +422,10 @@ async function downloadImage() {
 .images2-secondary,
 .images2-link {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   border: 0;
   border-radius: 9999px;
   cursor: pointer;
@@ -394,16 +455,24 @@ async function downloadImage() {
   color: #0f172a;
 }
 
-.images2-link {
-  background: transparent;
-  color: #fca5a5;
-  padding: 0.4rem 0.2rem;
+.images2-download-button {
+  padding: 0.56rem 0.9rem;
+  gap: 0.35rem;
+  font-size: 0.88rem;
 }
 
 .images2-stage {
   margin-top: 1.25rem;
   min-height: 560px;
   padding: 1rem;
+}
+
+.images2-stage-meta {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .images2-stage.is-generating {
@@ -449,22 +518,18 @@ async function downloadImage() {
 }
 
 .images2-stage-footer {
-  margin-top: 0.9rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 1rem;
+  width: 100%;
 }
 
 .images2-notice {
   margin: 0;
   color: #64748b;
   font-size: 0.92rem;
-}
-
-.images2-result-hint {
-  margin-top: 0.9rem;
-  padding: 0.8rem 0.95rem;
+  text-align: center;
 }
 
 .dark .images2-title {
@@ -486,6 +551,10 @@ async function downloadImage() {
   border-color: rgba(248, 113, 113, 0.26);
   background: rgba(69, 10, 10, 0.55);
   color: #fecaca;
+}
+
+.dark .images2-dev-toggle {
+  color: #94a3b8;
 }
 
 .dark .images2-composer,
@@ -524,7 +593,6 @@ async function downloadImage() {
   color: #020617;
 }
 
-.dark .images2-edit-hint,
 .dark .images2-result-hint {
   border-color: rgba(56, 189, 248, 0.22);
   background: rgba(8, 47, 73, 0.46);
@@ -534,10 +602,6 @@ async function downloadImage() {
 .dark .images2-secondary {
   background: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
-}
-
-.dark .images2-link {
-  color: #fda4af;
 }
 
 .dark .images2-primary {
@@ -571,6 +635,7 @@ async function downloadImage() {
 
 @media (max-width: 768px) {
   .images2-header,
+  .images2-stage-meta,
   .images2-stage-footer {
     flex-direction: column;
     align-items: stretch;
@@ -586,14 +651,19 @@ async function downloadImage() {
     align-self: center;
   }
 
+  .images2-size-options {
+    display: flex;
+    justify-content: stretch;
+    gap: 0.5rem;
+  }
+
   .images2-options-row {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .images2-size-options {
-    display: grid;
-    grid-template-columns: 1fr;
+  .images2-size-option {
+    flex: 1 1 0;
   }
 
   .images2-toolbar {
@@ -605,13 +675,6 @@ async function downloadImage() {
   .images2-primary,
   .images2-secondary {
     width: 100%;
-  }
-
-  .images2-link {
-    grid-column: 1 / -1;
-    justify-self: center;
-    margin-top: 0.15rem;
-    white-space: nowrap;
   }
 
   .images2-stage,
