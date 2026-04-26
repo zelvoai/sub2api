@@ -785,6 +785,8 @@ export interface Account {
   proxy?: Proxy
   group_ids?: number[] // Groups this account belongs to
   groups?: Group[] // Preloaded group objects
+  model_capability_count?: number
+  model_capability_last_seen_at?: string | null
 
   // Rate limit & scheduling fields
   schedulable: boolean

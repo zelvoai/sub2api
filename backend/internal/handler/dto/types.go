@@ -246,6 +246,9 @@ type Account struct {
 
 	GroupIDs []int64  `json:"group_ids,omitempty"`
 	Groups   []*Group `json:"groups,omitempty"`
+
+	ModelCapabilityCount      int        `json:"model_capability_count"`
+	ModelCapabilityLastSeenAt *time.Time `json:"model_capability_last_seen_at,omitempty"`
 }
 
 type AccountGroup struct {

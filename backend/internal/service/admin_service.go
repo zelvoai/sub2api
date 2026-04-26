@@ -510,6 +510,7 @@ type adminServiceImpl struct {
 	defaultSubAssigner   DefaultSubscriptionAssigner
 	userSubRepo          UserSubscriptionRepository
 	privacyClientFactory PrivacyClientFactory
+	accountModelCaps     *AccountModelCapabilityService
 }
 
 type userGroupRateBatchReader interface {
@@ -535,6 +536,7 @@ func NewAdminService(
 	defaultSubAssigner DefaultSubscriptionAssigner,
 	userSubRepo UserSubscriptionRepository,
 	privacyClientFactory PrivacyClientFactory,
+	accountModelCaps *AccountModelCapabilityService,
 ) AdminService {
 	return &adminServiceImpl{
 		userRepo:             userRepo,
@@ -554,6 +556,7 @@ func NewAdminService(
 		defaultSubAssigner:   defaultSubAssigner,
 		userSubRepo:          userSubRepo,
 		privacyClientFactory: privacyClientFactory,
+		accountModelCaps:     accountModelCaps,
 	}
 }
 
@@ -2033,7 +2036,29 @@ func (s *adminServiceImpl) ListAccounts(ctx context.Context, page, pageSize int,
 	if err != nil {
 		return nil, 0, err
 	}
+	s.enrichAccountModelCapabilitySummaries(ctx, accounts)
 	return accounts, result.Total, nil
+}
+
+func (s *adminServiceImpl) enrichAccountModelCapabilitySummaries(ctx context.Context, accounts []Account) {
+	if s == nil || s.accountModelCaps == nil || len(accounts) == 0 {
+		return
+	}
+	accountIDs := make([]int64, 0, len(accounts))
+	for i := range accounts {
+		accountIDs = append(accountIDs, accounts[i].ID)
+	}
+	summaries, err := s.accountModelCaps.SummariesByAccountIDs(ctx, accountIDs)
+	if err != nil {
+		logger.LegacyPrintf("service.admin", "failed to load account model capability summaries: err=%v", err)
+		return
+	}
+	for i := range accounts {
+		if summary, ok := summaries[accounts[i].ID]; ok {
+			accounts[i].ModelCapabilityCount = summary.ModelCount
+			accounts[i].ModelCapabilityLastSeenAt = summary.LastSeenAt
+		}
+	}
 }
 
 func (s *adminServiceImpl) GetAccount(ctx context.Context, id int64) (*Account, error) {

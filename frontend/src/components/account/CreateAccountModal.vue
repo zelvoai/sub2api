@@ -2556,6 +2556,18 @@
           :mixed-scheduling="mixedScheduling"
           data-tour="account-form-groups"
         />
+
+        <AccountUpstreamModelsPanel
+          v-if="showUpstreamModelsPanel"
+          :platform="form.platform"
+          :base-url="upstreamModelsPanelBaseUrl"
+          :api-key="upstreamModelsPanelApiKey"
+          :group-ids="form.group_ids"
+          :existing-mapping="upstreamModelsPanelMapping"
+          @mappings-updated="applyUpstreamModelMapping"
+          @success="appStore.showSuccess"
+          @error="appStore.showError"
+        />
       </div>
 
     </form>
@@ -2939,6 +2951,7 @@ import Icon from '@/components/icons/Icon.vue'
 import ProxySelector from '@/components/common/ProxySelector.vue'
 import GroupSelector from '@/components/common/GroupSelector.vue'
 import ModelWhitelistSelector from '@/components/account/ModelWhitelistSelector.vue'
+import AccountUpstreamModelsPanel from '@/components/account/AccountUpstreamModelsPanel.vue'
 import QuotaLimitCard from '@/components/account/QuotaLimitCard.vue'
 import { applyInterceptWarmup } from '@/components/account/credentialsBuilder'
 import { formatDateTimeLocalInput, parseDateTimeLocalInput } from '@/utils/format'
@@ -3375,6 +3388,48 @@ const canExchangeCode = computed(() => {
   return authCode.trim() && oauth.sessionId.value && !oauth.loading.value
 })
 
+const showUpstreamModelsPanel = computed(() => {
+  if (authStore.isSimpleMode || isOAuthFlow.value) return false
+  if (form.platform === 'antigravity') {
+    return antigravityAccountType.value === 'upstream'
+  }
+  return accountCategory.value === 'apikey'
+})
+
+const upstreamModelsPanelBaseUrl = computed(() => {
+  if (form.platform === 'antigravity' && antigravityAccountType.value === 'upstream') {
+    return upstreamBaseUrl.value
+  }
+  return apiKeyBaseUrl.value
+})
+
+const upstreamModelsPanelApiKey = computed(() => {
+  if (form.platform === 'antigravity' && antigravityAccountType.value === 'upstream') {
+    return upstreamApiKey.value
+  }
+  return apiKeyValue.value
+})
+
+const mappingListToObject = (items: ModelMapping[]): Record<string, string> => {
+  const out: Record<string, string> = {}
+  for (const item of items) {
+    const from = item.from.trim()
+    const to = item.to.trim()
+    if (from && to) {
+      out[from] = to
+    }
+  }
+  return out
+}
+
+const upstreamModelsPanelMapping = computed(() => {
+  if (form.platform === 'antigravity' && antigravityAccountType.value === 'upstream') {
+    return mappingListToObject(antigravityModelMappings.value)
+  }
+  const mapping = buildModelMappingObject(modelRestrictionMode.value, allowedModels.value, modelMappings.value)
+  return mapping || {}
+})
+
 // Watchers
 watch(
   () => props.show,
@@ -3559,6 +3614,19 @@ const addPresetMapping = (from: string, to: string) => {
     return
   }
   modelMappings.value.push({ from, to })
+}
+
+const applyUpstreamModelMapping = (mapping: Record<string, string>) => {
+  const entries = Object.entries(mapping).map(([from, to]) => ({ from, to }))
+  if (form.platform === 'antigravity' && antigravityAccountType.value === 'upstream') {
+    antigravityModelMappings.value = entries
+    appStore.showSuccess('Upstream model mapping updated')
+    return
+  }
+  modelRestrictionMode.value = 'mapping'
+  allowedModels.value = []
+  modelMappings.value = entries
+  appStore.showSuccess('Upstream model mapping updated')
 }
 
 const addAntigravityModelMapping = () => {

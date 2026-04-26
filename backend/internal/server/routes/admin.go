@@ -88,6 +88,7 @@ func RegisterAdminRoutes(
 
 		// 渠道管理
 		registerChannelRoutes(admin, h)
+		registerModelCatalogRoutes(admin, h)
 
 		// 渠道监控
 		registerChannelMonitorRoutes(admin, h)
@@ -287,6 +288,10 @@ func registerAccountRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		accounts.POST("/:id/schedulable", h.Admin.Account.SetSchedulable)
 		accounts.GET("/:id/models", h.Admin.Account.GetAvailableModels)
 		accounts.POST("/models/preview", h.Admin.Account.PreviewAvailableModels)
+		accounts.POST("/upstream-models/preview", h.Admin.AccountUpstreamModel.Preview)
+		accounts.POST("/upstream-models/import-catalog", h.Admin.AccountUpstreamModel.ImportCatalog)
+		accounts.POST("/:id/upstream-models/detect", h.Admin.AccountUpstreamModel.Detect)
+		accounts.POST("/:id/upstream-models/apply", h.Admin.AccountUpstreamModel.Apply)
 		accounts.POST("/batch", h.Admin.Account.BatchCreate)
 		accounts.GET("/data", h.Admin.Account.ExportData)
 		accounts.POST("/data", h.Admin.Account.ImportData)
@@ -574,6 +579,32 @@ func registerChannelRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		channels.POST("", h.Admin.Channel.Create)
 		channels.PUT("/:id", h.Admin.Channel.Update)
 		channels.DELETE("/:id", h.Admin.Channel.Delete)
+	}
+}
+
+func registerModelCatalogRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
+	vendors := admin.Group("/model-vendors")
+	{
+		vendors.GET("", h.Admin.ModelVendor.List)
+		vendors.POST("", h.Admin.ModelVendor.Create)
+		vendors.PUT("/:id", h.Admin.ModelVendor.Update)
+		vendors.DELETE("/:id", h.Admin.ModelVendor.Delete)
+	}
+
+	models := admin.Group("/models")
+	{
+		models.GET("", h.Admin.ModelCatalog.List)
+		models.GET("/search", h.Admin.ModelCatalog.Search)
+		models.GET("/missing", h.Admin.ModelCatalog.Missing)
+		models.GET("/group-available", h.Admin.ModelCatalog.GroupAvailable)
+		models.GET("/sync-upstream/preview", h.Admin.ModelCatalog.SyncPreview)
+		models.POST("/sync-upstream", h.Admin.ModelCatalog.SyncUpstream)
+		models.POST("/batch-delete", h.Admin.ModelCatalog.BatchDelete)
+		models.GET("/:id", h.Admin.ModelCatalog.Get)
+		models.POST("", h.Admin.ModelCatalog.Create)
+		models.PUT("/:id", h.Admin.ModelCatalog.Update)
+		models.PATCH("/:id/status", h.Admin.ModelCatalog.UpdateStatus)
+		models.DELETE("/:id", h.Admin.ModelCatalog.Delete)
 	}
 }
 

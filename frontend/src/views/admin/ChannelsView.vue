@@ -407,6 +407,7 @@
                   :key="idx"
                   :entry="entry"
                   :platform="section.platform"
+                  :group-ids="section.group_ids"
                   @update="updatePricingEntry(sIdx, idx, $event)"
                   @remove="removePricingEntry(sIdx, idx)"
                 />
@@ -537,6 +538,7 @@
                       :key="pIdx"
                       :entry="entry"
                       :platform="section.platform"
+                      :group-ids="rule.group_ids"
                       @update="rule.pricing.splice(pIdx, 1, $event)"
                       @remove="removeRulePricingEntry(sIdx, ruleIndex, pIdx)"
                     />

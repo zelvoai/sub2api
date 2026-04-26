@@ -2687,6 +2687,7 @@ export default {
         schedulable: '调度',
         todayStats: '今日统计',
         groups: '分组',
+        modelCapabilities: '模型能力',
         usageWindows: '用量窗口',
         proxy: '代理',
         lastUsed: '最近使用',
@@ -3079,6 +3080,8 @@ export default {
       fetchModelsDeselectProvider: '取消全选',
       fetchModelsAppend: '一键添加到模型限制（{count}）',
       fetchModelsProviderOther: '其他',
+      modelCapabilitiesCount: '{count} 个模型',
+      modelCapabilitiesNotSynced: '未同步',
       poolMode: '池模式',
       poolModeHint: '上游为账号池时启用，错误不标记本地账号状态',
       poolModeInfo:

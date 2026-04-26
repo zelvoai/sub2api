@@ -57,6 +57,9 @@ type Account struct {
 	GroupIDs      []int64
 	Groups        []*Group
 
+	ModelCapabilityCount      int
+	ModelCapabilityLastSeenAt *time.Time
+
 	// model_mapping 热路径缓存（非持久化字段）
 	modelMappingCache               map[string]string
 	modelMappingCacheReady          bool

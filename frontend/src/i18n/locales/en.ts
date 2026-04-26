@@ -2588,6 +2588,7 @@ export default {
         schedulable: 'Schedulable',
         todayStats: 'Today Stats',
         groups: 'Groups',
+        modelCapabilities: 'Model Capabilities',
         usageWindows: 'Usage Windows',
         proxy: 'Proxy',
         lastUsed: 'Last Used',
@@ -2874,6 +2875,8 @@ export default {
       fetchModelsDeselectProvider: 'Deselect all',
       fetchModelsAppend: 'Add to model restriction ({count})',
       fetchModelsProviderOther: 'Other',
+      modelCapabilitiesCount: '{count} models',
+      modelCapabilitiesNotSynced: 'Not synced',
       poolMode: 'Pool Mode',
       poolModeHint: 'Enable when upstream is an account pool; errors won\'t mark local account status',
       poolModeInfo:

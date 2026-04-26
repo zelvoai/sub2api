@@ -80,6 +80,41 @@
               :placeholder="t('admin.channels.form.modelsPlaceholder', '输入模型名后按回车添加，支持通配符 *')"
               class="mt-1"
             />
+            <div class="mt-2 rounded-md border border-dashed border-gray-200 p-2 dark:border-dark-600">
+              <div class="flex flex-wrap gap-2">
+                <input
+                  v-model="catalogSearch"
+                  class="input h-8 min-w-0 flex-1 text-xs"
+                  placeholder="Search model catalog..."
+                  @keydown.enter.prevent="searchCatalog"
+                />
+                <button type="button" class="btn btn-secondary btn-sm" :disabled="catalogLoading" @click="searchCatalog">
+                  <Icon name="search" size="sm" />
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  :disabled="catalogLoading || !groupIds.length"
+                  @click="loadGroupModels"
+                >
+                  {{ t('admin.channels.form.fromGroupModels', '从分组可用模型添加') }}
+                </button>
+              </div>
+              <p v-if="groupIds.length === 0" class="mt-1 text-xs text-amber-600 dark:text-amber-300">
+                {{ t('admin.channels.form.selectGroupFirst', '先选择渠道绑定分组后，可从该分组实际可用模型导入。') }}
+              </p>
+              <div v-if="catalogOptions.length" class="mt-2 flex flex-wrap gap-1">
+                <button
+                  v-for="model in catalogOptions"
+                  :key="model.id"
+                  type="button"
+                  class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-primary-100 hover:text-primary-700 dark:bg-dark-700 dark:text-gray-300"
+                  @click="addCatalogModel(model.model_name)"
+                >
+                  {{ model.model_name }}
+                </button>
+              </div>
+            </div>
           </div>
           <div class="w-40">
             <label class="text-xs font-medium text-gray-500 dark:text-gray-400">
@@ -237,12 +272,14 @@ import type { PricingFormEntry, IntervalFormEntry } from './types'
 import { perTokenToMTok, getPlatformTagClass } from './types'
 import type { BillingMode } from '@/api/admin/channels'
 import channelsAPI from '@/api/admin/channels'
+import modelsAPI, { type GroupAvailableModel, type ModelCatalog } from '@/api/admin/models'
 
 const { t } = useI18n()
 
 const props = defineProps<{
   entry: PricingFormEntry
   platform?: string
+  groupIds?: number[]
 }>()
 
 const emit = defineEmits<{
@@ -252,6 +289,12 @@ const emit = defineEmits<{
 
 // Collapse state: entries with existing models default to collapsed
 const collapsed = ref(props.entry.models.length > 0)
+const catalogSearch = ref('')
+const catalogOptions = ref<ModelCatalog[]>([])
+const groupModelOptions = ref<GroupAvailableModel[]>([])
+const catalogLoading = ref(false)
+
+const groupIds = computed(() => props.groupIds || [])
 
 const billingModeOptions = computed(() => [
   { value: 'token', label: 'Token' },
@@ -334,6 +377,57 @@ async function onModelsUpdate(newModels: string[]) {
   } catch {
     // 查询失败不影响用户操作
   }
+}
+async function searchCatalog() {
+  const query = catalogSearch.value.trim()
+  if (!query) {
+    catalogOptions.value = []
+    return
+  }
+  catalogLoading.value = true
+  try {
+    catalogOptions.value = await modelsAPI.search(query, 12)
+  } catch {
+    catalogOptions.value = []
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+async function loadGroupModels() {
+  if (!groupIds.value.length) return
+  catalogLoading.value = true
+  try {
+    groupModelOptions.value = await modelsAPI.groupAvailable(groupIds.value, catalogSearch.value.trim(), 100)
+    catalogOptions.value = groupModelOptions.value.map((m, idx) => ({
+      id: idx + 1,
+      model_name: m.model_name,
+      description: '',
+      icon: '',
+      tags: '',
+      vendor_id: null,
+      vendor_name: m.vendor_name || m.provider,
+      vendor_icon: m.vendor_icon || '',
+      endpoints: [],
+      status: 'active',
+      sync_official: false,
+      name_rule: 0,
+      account_count: m.account_count,
+      available_groups: m.groups,
+      created_at: '',
+      updated_at: ''
+    }))
+  } catch {
+    groupModelOptions.value = []
+    catalogOptions.value = []
+  } finally {
+    catalogLoading.value = false
+  }
+}
+
+function addCatalogModel(modelName: string) {
+  if (props.entry.models.includes(modelName)) return
+  onModelsUpdate([...props.entry.models, modelName])
 }
 </script>
 

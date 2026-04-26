@@ -10,6 +10,7 @@ type AdminHandlers struct {
 	User                   *admin.UserHandler
 	Group                  *admin.GroupHandler
 	Account                *admin.AccountHandler
+	AccountUpstreamModel   *admin.AccountUpstreamModelHandler
 	Announcement           *admin.AnnouncementHandler
 	DataManagement         *admin.DataManagementHandler
 	Backup                 *admin.BackupHandler
@@ -31,6 +32,8 @@ type AdminHandlers struct {
 	APIKey                 *admin.AdminAPIKeyHandler
 	ScheduledTest          *admin.ScheduledTestHandler
 	Channel                *admin.ChannelHandler
+	ModelCatalog           *admin.ModelCatalogHandler
+	ModelVendor            *admin.ModelVendorHandler
 	ChannelMonitor         *admin.ChannelMonitorHandler
 	ChannelMonitorTemplate *admin.ChannelMonitorRequestTemplateHandler
 	Payment                *admin.PaymentHandler

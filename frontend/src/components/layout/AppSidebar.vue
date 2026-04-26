@@ -737,6 +737,7 @@ const adminNavItems = computed((): NavItem[] => {
       expandOnly: true,
       children: [
         { path: '/admin/channels/pricing', label: t('nav.channelPricing'), icon: PriceTagIcon },
+        { path: '/admin/models', label: t('nav.modelManagement', 'Model Management'), icon: ServerIcon },
         { path: '/admin/channels/monitor', label: t('nav.channelMonitor'), icon: SignalIcon, featureFlag: flagChannelMonitor },
       ],
     },

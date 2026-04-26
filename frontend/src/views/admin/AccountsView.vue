@@ -219,6 +219,16 @@
           <template #cell-groups="{ row }">
             <AccountGroupsCell :groups="row.groups" :max-display="4" />
           </template>
+          <template #cell-model_capabilities="{ row }">
+            <div class="flex flex-col">
+              <span class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                {{ t('admin.accounts.modelCapabilitiesCount', { count: row.model_capability_count ?? 0 }) }}
+              </span>
+              <span class="text-xs text-gray-500 dark:text-dark-400">
+                {{ row.model_capability_last_seen_at ? formatRelativeTime(row.model_capability_last_seen_at) : t('admin.accounts.modelCapabilitiesNotSynced') }}
+              </span>
+            </div>
+          </template>
           <template #cell-usage="{ row }">
             <AccountUsageCell
               :account="row"
@@ -955,6 +965,7 @@ const allColumns = computed(() => {
   ]
   if (!authStore.isSimpleMode) {
     c.push({ key: 'groups', label: t('admin.accounts.columns.groups'), sortable: false })
+    c.push({ key: 'model_capabilities', label: t('admin.accounts.columns.modelCapabilities'), sortable: false })
   }
   c.push(
     { key: 'usage', label: t('admin.accounts.columns.usageWindows'), sortable: false },
