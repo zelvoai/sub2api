@@ -211,6 +211,42 @@ export interface PublicSettings {
   available_channels_enabled: boolean
 }
 
+export type PlaygroundMessageRole = 'user' | 'assistant' | 'system'
+export type PlaygroundMessageStatus = 'idle' | 'loading' | 'complete' | 'error' | 'incomplete'
+
+export interface PlaygroundMessage {
+  id: string
+  role: PlaygroundMessageRole
+  content: string
+  image_urls?: string[]
+  reasoning_content?: string
+  status?: PlaygroundMessageStatus
+  created_at: number
+  is_reasoning_expanded?: boolean
+  is_thinking_complete?: boolean
+  error_code?: string | null
+}
+
+export interface PlaygroundInputs {
+  group_id: number | null
+  model: string
+  stream: boolean
+  temperature: number
+  top_p: number
+  max_tokens: number
+  frequency_penalty: number
+  presence_penalty: number
+  seed: number | null
+}
+
+export interface PlaygroundDebugData {
+  preview_request: unknown | null
+  request: unknown | null
+  response: unknown | null
+  timestamp: string | null
+  stream_events?: string[]
+}
+
 export interface AuthResponse {
   access_token: string
   refresh_token?: string  // New: Refresh Token for token renewal

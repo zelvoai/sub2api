@@ -250,3 +250,9 @@ func setGroupContext(c *gin.Context, group *service.Group) {
 	ctx := context.WithValue(c.Request.Context(), ctxkey.Group, group)
 	c.Request = c.Request.WithContext(ctx)
 }
+
+// SetGroupContextForRuntime injects a validated group into request context for
+// internal callers that reuse gateway handlers without running API-key auth.
+func SetGroupContextForRuntime(c *gin.Context, group *service.Group) {
+	setGroupContext(c, group)
+}

@@ -21,6 +21,7 @@ export { totpAPI } from './totp'
 export { default as announcementsAPI } from './announcements'
 export { channelMonitorUserAPI } from './channelMonitor'
 export { images2API } from './images2'
+export { playgroundAPI } from './playground'
 
 // Admin APIs
 export { adminAPI } from './admin'

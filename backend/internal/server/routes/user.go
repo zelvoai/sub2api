@@ -68,6 +68,16 @@ func RegisterUserRoutes(
 			groups.GET("/rates", h.APIKey.GetUserGroupRates)
 		}
 
+		// Playground（登录用户态）
+		playground := authenticated.Group("/playground")
+		{
+			playground.GET("/groups", h.Playground.GetGroups)
+			playground.GET("/models", h.Playground.GetModels)
+			playground.GET("/groups/:id/models", h.Playground.GetGroupModels)
+			playground.POST("/chat/completions", h.Playground.ChatCompletions)
+			playground.POST("/images/generations", h.Playground.ImagesGenerations)
+		}
+
 		// 用户可用渠道（非管理员接口）
 		channels := authenticated.Group("/channels")
 		{
